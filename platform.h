@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <io.h>
 #include <signal.h>
+#include <stdio.h>
+
+typedef unsigned int   word;
+typedef unsigned char  byte;
 
 #endif
 
