@@ -1,0 +1,1 @@
+msp430-bsl --invert-test --invert-reset --f1x -c /dev/ttyUSB0 -e -r -p ./prog430x.elf
