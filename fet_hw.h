@@ -8,7 +8,8 @@
 
 #define TIMERA0_FREQ  1000
 
-#define DEFAULT_UART_BITRATE 115200
+//#define DEFAULT_UART_BITRATE 115200
+#define DEFAULT_UART_BITRATE 230400 
 
 #define JTAGIN       P5IN   // Control ports are on P5.x
 #define JTAGOUT      P5OUT
@@ -36,7 +37,6 @@
 #define LED0_TOGGLE()  {P1OUT ^=  0x01;}
 
 void init_hardware();
-void init_target();
 
 void enable_nmi();
 

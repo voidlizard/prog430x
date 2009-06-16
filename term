@@ -1,1 +1,3 @@
-screen /dev/ttyUSB0 115200,cs8,-ixon,-ixon,istrip
+
+#screen /dev/ttyUSB0 115200,cs8,-ixon,-ixon,istrip
+screen /dev/ttyUSB0 230400,cs8,-ixon,-ixon,istrip

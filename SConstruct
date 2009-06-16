@@ -36,6 +36,7 @@ LDFLAGS = " ".join([
 FW_FILES = [
 	  'fet_hw.c'
 	 ,'jtag.c'
+     ,'ti_jtag.c'
      ,'main.c'
 ]
 

@@ -1,5 +1,8 @@
 #include "fet_hw.h"
 
+static void init_timer();
+static void init_uarts();
+
 static volatile uint32_t __ticks_ms = 0;
 
 static void __init_UART0(void);
@@ -10,7 +13,7 @@ interrupt (TIMERA0_VECTOR) isr_timer_a0( void );
 interrupt (UART0RX_VECTOR) wakeup uart0_rx_isr( void );
 interrupt (UART0TX_VECTOR) wakeup uart0_tx_isr( void );
 
-void init_timer()
+static void init_timer()
 {
     volatile unsigned int i;
     BCSCTL1 |= XTS;                           // ACLK= LFXT1= HF XTAL
@@ -24,7 +27,7 @@ void init_timer()
     CCTL0  = CCIE;
 }
 
-void init_uarts()
+static void init_uarts()
 {
     __init_UART0();
 }
