@@ -82,7 +82,14 @@ void serial_interp(reader_t readf, world_t *world) {
         action aquire  { target_aquire(world); }
         action release { target_release(world); }
 
+        action jtag_id { spush(astack, target_jtag_id(world)); }
+        action jtag_id_sup { spop(astack, tmp); target_jtag_id_support(world, tmp); }
+
         action tgt_read_w { spop(astack, tmp); spush(astack, target_read_word(world, tmp)); }
+
+        action tgt_read_m { spop(astack, tmp); spop(astack, ttmp); target_read_mem(world, ttmp, tmp); }
+
+        action dump_buf_txt { data_buf_dump_txt(world, (word)(world->data) ); }
 
         ping    = 'ping'    %{printf("\r\npong\r\n");};
         drop    = 'drop'    %drop;
@@ -92,13 +99,23 @@ void serial_interp(reader_t readf, world_t *world) {
         dot_c   = '.c'      %dot_c;
         echo    = 'echo'    %echo;
         led     = 'led'     %led;
+        
+        
         aquire  = 'aquire'  %aquire;
         release = 'release' %release;
+
+        jtag_id = 'jtag-id' %jtag_id;
+        jtag_id_sup = 'jtag-id-sup' %jtag_id_sup;
+
         tgt_read_w = '@xw'  %tgt_read_w;
+        tgt_read_m = '@xm'  %tgt_read_m;
+
+        dump_buf_txt = '@dump-buf-txt' %dump_buf_txt;
 
         literal = (('$' xdigit+ @{add_hex(&literal, fc);}) | digit+ @{add_dec(&literal, fc);} ) %lit;
         word    = ping | dot_x | dot_c | drop | swap | echo | led
-                  | aquire | release | tgt_read_w;
+                  | aquire | release | jtag_id | jtag_id_sup | tgt_read_w | tgt_read_m
+                  | dump_buf_txt;
 
         main := ((literal | word ) space+ %reset )* ;
         

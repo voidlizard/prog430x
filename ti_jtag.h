@@ -43,5 +43,7 @@ void WriteFLASH_430Xv2_wo_release(unsigned long StartAddr, unsigned long Length,
 void EraseFLASH_430Xv2(word EraseMode, unsigned long EraseAddr);
 void EraseFLASH_430Xv2_wo_release(word EraseMode, unsigned long EraseAddr);
 
+word IsLockKeyProgrammed(void);
+
 #endif
 

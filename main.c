@@ -97,26 +97,6 @@ static word test_core_id(msp430x_mcu_info_t *mcu_info)
   }
 }
 
-word IsLockKeyProgrammed(void)
-{
-    word i;
-    word data = 0x0000;
-
-    for (i = 3; i > 0; i--)     //  First trial could be wrong
-    {
-        IR_Shift(IR_CNTRL_SIG_CAPTURE);
-        data = DR_Shift16(0xAAAA);
-
-        printf("FUSE: %04X\r\n", data);
-
-        if (data == 0x5555)
-        {
-            return(STATUS_OK);  // Fuse is blown
-        }
-    }
-    return(STATUS_ERROR);       // fuse is not blown
-}
-
 
 int serial_reader(char *buf, int size, int echo)
 {
@@ -133,8 +113,6 @@ int serial_reader(char *buf, int size, int echo)
     }
     return read;
 }
-
-word data[512];
 
 int main(void)
 {
@@ -155,9 +133,11 @@ int main(void)
 
     enable_nmi();
 
+    world_init(&world);
+
     for(;;) {
         serial_interp(serial_reader, &world);
-        printf("\r\noops\r\n");
+        log_error(PARSE_ERR, "oops");
     }
 
 /*    wait_terminal();*/

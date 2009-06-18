@@ -665,3 +665,23 @@ void WriteFLASH_430Xv2_wo_release(unsigned long StartAddr, unsigned long Length,
     }
   }
 }
+
+
+word IsLockKeyProgrammed(void)
+{
+    word i;
+    word data = 0x0000;
+
+    for (i = 3; i > 0; i--)     //  First trial could be wrong
+    {
+        IR_Shift(IR_CNTRL_SIG_CAPTURE);
+        data = DR_Shift16(0xAAAA);
+
+        if (data == 0x5555)
+        {
+            return(STATUS_OK);  // Fuse is blown
+        }
+    }
+    return(STATUS_ERROR);       // fuse is not blown
+}
+

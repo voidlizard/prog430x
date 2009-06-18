@@ -7,6 +7,11 @@ void init_target()
     JTAGOUT  = 0x00;
     JTAGDIR  = 0;
 
+/*    RSTDIR  |= RST_BIT;*/
+/*    RSTOUT   = 0;*/
+
+/*    delay_ms(5);*/
+
     TSTOUT  |= TST_BIT;
     RSTOUT  |= RST_BIT;
     TSTDIR  |= TST_BIT;
@@ -23,6 +28,10 @@ void init_target()
     RSTOUT  =  0;
 
     delay_us(100);
+    RSTDIR  |= RST_BIT;
+    RSTOUT   = 0;
+
+    delay_ms(5);
 
     TSTOUT = 0;
     TSTOUT |= TST_BIT;
@@ -31,7 +40,6 @@ void init_target()
 
     RSTOUT |= RST_BIT;
 
-/*    delay_ms(17);*/
 }
 
 void release_target()
