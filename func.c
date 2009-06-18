@@ -118,8 +118,9 @@ void target_release(fet_world_t *world)
 
 word target_read_word(fet_world_t *world, dword addr)
 {
-    printf("\r\nread word\r\n");
-    return (word)0xDEAD;
+    word tmp = 0;
+    ReadMemQuick_430Xv2(addr, sizeof(tmp), &tmp);
+    return tmp;
 }
 
 void target_read_mem(fet_world_t *world, dword addr, word len)
@@ -139,11 +140,12 @@ word target_jtag_id(fet_world_t *world)
     return world->jtag_id;
 }
 
-void data_buf_fill(fet_world_t *world, word val)
+void data_buf_fill(fet_world_t *world, byte val)
 {
+    memset(world->data, val, DATA_BUF_SIZE_WORDS*2);
 }
 
-void data_buf_dump_txt(fet_world_t *world, dword addr)
+void data_buf_dump_txt(fet_world_t *world, dword addr, word len)
 {
     int i = 0;
     word *data;
@@ -159,8 +161,8 @@ void data_buf_dump_txt(fet_world_t *world, dword addr)
         printf("@%04X\r\n", (word)(addr));
     }
 
-    for( i = 0; i < DATA_BUF_SIZE_WORDS; i++ ) {
-        printf("%02x %02x ", data[i] & 0xFF, data[i] >> 8);
+    for( i = 0; i < len/2; i++ ) {
+        printf("%02X %02X ", data[i] & 0xFF, data[i] >> 8);
         if( !((i+1) % 8) ) printf("\r\n");
     }
 

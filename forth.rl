@@ -68,7 +68,10 @@ void serial_interp(reader_t readf, world_t *world) {
     %%{
         machine forth;
 
-        action reset   { literal = 0;}
+        action reset_lit { literal = 0;}
+
+        action reset   { astack_top = astack; literal = 0; }
+
         action lit     { spush(astack, literal); }
         action drop    { spop(astack, tmp); }
         action dup     { spush(astack, top(astack)); }
@@ -89,35 +92,44 @@ void serial_interp(reader_t readf, world_t *world) {
 
         action tgt_read_m { spop(astack, tmp); spop(astack, ttmp); target_read_mem(world, ttmp, tmp); }
 
-        action dump_buf_txt { data_buf_dump_txt(world, (word)(world->data) ); }
-
-        ping    = 'ping'    %{printf("\r\npong\r\n");};
-        drop    = 'drop'    %drop;
-        swap    = 'swap'    %swap;
-        dup     = 'dup'     %dup;
-        dot_x   = '.x'      %dot_x;
-        dot_c   = '.c'      %dot_c;
-        echo    = 'echo'    %echo;
-        led     = 'led'     %led;
+        action dump_buf_txt { data_buf_dump_txt(world, (word)(world->data), DATA_BUF_SIZE_WORDS*2 ); }
         
+        action  xdump       { spop(astack, tmp); spop(astack, ttmp); data_buf_dump_txt(world, ttmp, tmp ); }
         
-        aquire  = 'aquire'  %aquire;
-        release = 'release' %release;
+        action bfill        { spop(astack, tmp); data_buf_fill(world, (byte)tmp); }
 
-        jtag_id = 'jtag-id' %jtag_id;
-        jtag_id_sup = 'jtag-id-sup' %jtag_id_sup;
+        ping         = 'ping'    %{log("pong");};
+        drop         = 'drop'    %drop;
+        swap         = 'swap'    %swap;
+        dup          = 'dup'     %dup;
+        dot_x        = '.x'      %dot_x;
+        dot_c        = '.c'      %dot_c;
+        echo         = 'echo'    %echo;
+        led          = 'led'     %led;
+        
+        reset        = 'reset'   %reset;
+        
+        aquire       = 'aquire'  %aquire;
+        release      = 'release' %release;
 
-        tgt_read_w = '@xw'  %tgt_read_w;
-        tgt_read_m = '@xm'  %tgt_read_m;
+        jtag_id      = 'jtag-id' %jtag_id;
+        jtag_id_sup  = 'jtag-id-sup' %jtag_id_sup;
 
+        tgt_read_w   = '@xw'  %tgt_read_w;
+        tgt_read_m   = '@xm'  %tgt_read_m;
+
+        xdump        = '@xdump' %xdump;
+        
         dump_buf_txt = '@dump-buf-txt' %dump_buf_txt;
+
+        bfill        = 'bfill' %bfill;
 
         literal = (('$' xdigit+ @{add_hex(&literal, fc);}) | digit+ @{add_dec(&literal, fc);} ) %lit;
         word    = ping | dot_x | dot_c | drop | swap | echo | led
                   | aquire | release | jtag_id | jtag_id_sup | tgt_read_w | tgt_read_m
-                  | dump_buf_txt;
+                  | dump_buf_txt | xdump | bfill | reset;
 
-        main := ((literal | word ) space+ %reset )* ;
+        main := ((literal | word ) space+ %reset_lit )* ;
         
         write init;
     }%%
