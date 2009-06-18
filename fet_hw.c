@@ -1,17 +1,29 @@
 #include "fet_hw.h"
 
+#include <mspgcc/util.h>
+#include <mspgcc/ringbuffer.h>
+
 static void init_timer();
 static void init_uarts();
+
+RINGBUFFER_NEW(ringbuffer, 40);
 
 static volatile uint32_t __ticks_ms = 0;
 
 static void __init_UART0(void);
 
 int putchar(int);
+
 interrupt (NMI_VECTOR) wakeup nmi_isr (void);
 interrupt (TIMERA0_VECTOR) isr_timer_a0( void );
 interrupt (UART0RX_VECTOR) wakeup uart0_rx_isr( void );
 interrupt (UART0TX_VECTOR) wakeup uart0_tx_isr( void );
+
+int getchar()
+{
+    while(!ringbuffer_len(&ringbuffer)) _NOP();
+    return ringbuffer_get(&ringbuffer);
+}
 
 static void init_timer()
 {
@@ -71,7 +83,10 @@ interrupt (TIMERA0_VECTOR) isr_timer_a0( void )
 
 interrupt (UART0RX_VECTOR) wakeup uart0_rx_isr( void )
 {
+    char character = U0RXBUF;
+    ringbuffer_put(&ringbuffer, character);
 }
+
 
 interrupt (UART0TX_VECTOR) wakeup uart0_tx_isr( void )
 {

@@ -37,17 +37,28 @@ FW_FILES = [
 	  'fet_hw.c'
 	 ,'jtag.c'
      ,'ti_jtag.c'
+     ,'forth.c'
+     ,'func.c'
      ,'main.c'
 ]
 
 FILES = FW_FILES 
 
-env = Environment( CC=CC,
-                   CCFLAGS=CCFLAGS_DEBUG, LINKFLAGS=LDFLAGS,
-				   CPPPATH=['.'],
+ragel = Builder(action = 'ragel -e -C -T1  $SOURCES -o $TARGETS',
+			    suffix = '.c',
+			    src_suffix = '.rl')
+
+env = Environment(  CC=CC
+                   ,CCFLAGS=CCFLAGS_DEBUG
+                   ,LINKFLAGS=LDFLAGS
+                   ,LIBS=['mspgcc']
+				   ,CPPPATH=['.']
+				   ,BUILDERS={'Ragel' : ragel}
 				 )
 
 env.PrependENVPath('PATH', '/opt/mspgcc/bin')
+
+env.Ragel('forth.rl')
 
 env.Program ( 'prog430x.elf', FILES)
 

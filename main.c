@@ -1,8 +1,16 @@
+#include "platform.h"
 #include "fet_hw.h" 
 #include "jtag.h"
 
+#include "func.h"
+
+typedef fet_world_t world_t;
+
+#include "forth.h"
+
 static void wait_bsl(void);
 static void wait_terminal(void);
+static int serial_reader(char *buf, int size, int echo);
 
 static void wait_bsl(void)
 {
@@ -48,7 +56,7 @@ static word test_core_id(msp430x_mcu_info_t *mcu_info)
     word i;
     word JtagId          = 0x00;
     word CoreId          = 0x00;
-    word DeviceIdPointer = 0x00;
+    unsigned long DeviceIdPointer = 0x00;
 
     for (i = 0; i < MAX_ENTRY_TRY; i++)
     {
@@ -79,6 +87,7 @@ static word test_core_id(msp430x_mcu_info_t *mcu_info)
     printf("JTAG ID: %04X\r\n",JtagId);
     printf("CORE ID: %04X\r\n",CoreId);
     printf("DEVICE ID PTR: %04X %04X\r\n", (word)(DeviceIdPointer>>16), (word)(DeviceIdPointer & 0xFFFF));
+    printf("DEVICE ID PTR(16): %04X\r\n", (word)DeviceIdPointer);
 
     return(STATUS_OK);
   }
@@ -91,11 +100,16 @@ static word test_core_id(msp430x_mcu_info_t *mcu_info)
 word IsLockKeyProgrammed(void)
 {
     word i;
+    word data = 0x0000;
 
     for (i = 3; i > 0; i--)     //  First trial could be wrong
     {
         IR_Shift(IR_CNTRL_SIG_CAPTURE);
-        if (DR_Shift16(0xAAAA) == 0x5555)
+        data = DR_Shift16(0xAAAA);
+
+        printf("FUSE: %04X\r\n", data);
+
+        if (data == 0x5555)
         {
             return(STATUS_OK);  // Fuse is blown
         }
@@ -103,15 +117,31 @@ word IsLockKeyProgrammed(void)
     return(STATUS_ERROR);       // fuse is not blown
 }
 
-word data[] = {0xDEAD, 0xBEEF};
+
+int serial_reader(char *buf, int size, int echo)
+{
+    int read  = 0;
+    char c;
+    while(size--) {
+        c = getchar();
+        if( echo ) {
+            if( c == '\n' || c == '\r' ) printf("\r\n");
+            putchar(c);
+        }
+        *buf++ = c;
+        read++;
+    }
+    return read;
+}
+
+word data[512];
 
 int main(void)
 {
-
     word jtagId = 0x00, i;
     word deviceId = 0x00;
-
     unsigned long addr = 0;
+    world_t world;
 
     msp430x_mcu_info_t mcu;
 
@@ -125,29 +155,36 @@ int main(void)
 
     enable_nmi();
 
-    wait_terminal();
+    for(;;) {
+        serial_interp(serial_reader, &world);
+        printf("\r\noops\r\n");
+    }
 
-    init_target();
+/*    wait_terminal();*/
 
-    if( STATUS_ERROR == test_core_id(&mcu) ) printf("\r\nFUCKUP\r\n");
+/*    wait_terminal();*/
 
-    if( STATUS_OK == IsLockKeyProgrammed() ) printf("\r\nLOCKED\r\n");
+/*    init_target();*/
 
-    if( SyncJtag_AssertPor() != STATUS_OK) printf("\r\nPOR FUCKUP\r\n");
-    else printf("\r\nPOR OK\r\n");
+/*    if( STATUS_ERROR == test_core_id(&mcu) ) printf("\r\nFUCKUP\r\n");*/
+
+/*    if( STATUS_OK == IsLockKeyProgrammed() ) printf("\r\nLOCKED\r\n");*/
+
+/*    if( SyncJtag_AssertPor() != STATUS_OK) printf("\r\nPOR FUCKUP\r\n");*/
+/*    else printf("\r\nPOR OK\r\n");*/
 
     // RAM ACCESS - OK
-    WriteMem_430Xv2(F_WORD, 0x1C00, 0xDEAD);
-    printf("0x1C00: %04X\r\n", ReadMem_430Xv2(F_WORD, 0x1C00));
+/*    WriteMem_430Xv2(F_WORD, 0x1C00, 0xDEAD);*/
+/*    printf("0x1C00: %04X\r\n", ReadMem_430Xv2(F_WORD, 0x1C00));*/
 
-    printf("0xF00F: %04X\r\n", ReadMem_430Xv2(F_WORD, 0xF00F));
-    printf("0x0FF0: %04X\r\n", ReadMem_430Xv2(F_WORD, 0x0FF0));
+/*    printf("0xF00F: %04X\r\n", ReadMem_430Xv2(F_WORD, 0xF00F));*/
+/*    printf("0x0FF0: %04X\r\n", ReadMem_430Xv2(F_WORD, 0x0FF0));*/
 
-    IR_Shift(IR_DEVICE_ID);
-    addr = DR_Shift20(0);
+/*    IR_Shift(IR_DEVICE_ID);*/
+/*    addr = DR_Shift20(0);*/
 
-    addr = ((addr & 0xFFFF) << 4 )  + (addr >> 16 );
-    printf("DeviceId ADDR: %04X %04X\r\n", (word)(addr >> 16), (word)(addr & 0xFFFF) );
+/*    addr = ((addr & 0xFFFF) << 4 )  + (addr >> 16 );*/
+/*    printf("DeviceId ADDR: %04X %04X\r\n", (word)(addr >> 16), (word)(addr & 0xFFFF) );*/
 
 /*    ResetTAP();*/
 
@@ -156,13 +193,13 @@ int main(void)
 /*        printf("ADDR[i]: %d,  VALUE: %04X\r\n", i, deviceId);*/
 /*    }*/
 
-    IR_Shift(IR_DEVICE_ID);
-    addr = DR_Shift16(0);
+/*    IR_Shift(IR_DEVICE_ID);*/
+/*    addr = DR_Shift20(0);*/
 
-    printf("DeviceId ADDR 16: %04X \r\n", (word)(addr) );
-    printf("VALUE: %04X\r\n", ReadMem_430Xv2(F_WORD, addr));
+/*    printf("DeviceId ADDR 16: %04X \r\n", (word)(addr) );*/
+/*    printf("VALUE: %04X\r\n", ReadMem_430Xv2(F_WORD, addr));*/
 
-    printf("\r\n--\r\n");
+/*    printf("\r\n--\r\n");*/
 
 /*    for( i = 0, addr = 0x1C00; i < 16384/2; i++, addr += 2 ) {*/
 /*        WriteMem_430Xv2(F_WORD, addr, 0xDDDD);*/
@@ -177,21 +214,38 @@ int main(void)
 
 /*    WriteFLASH_430Xv2(0, 0, 0);*/
 
-    EraseFLASH_430Xv2_wo_release(ERASE_SGMT, 0x5C00);
+/*    EraseFLASH_430Xv2(ERASE_MASS, 0x5C00);*/
 
-    delay_ms(500);
+/*    printf("\r\nDONE\r\n");*/
 
-    WriteFLASH_430Xv2_wo_release(0x5C00, 2, data);
+/*    delay_ms(500);*/
 
-    delay_ms(1000);
+/*    WriteFLASH_430Xv2_wo_release(0x5C00, 2, data);*/
 
-    for( i = 0, addr = 0x5C00; i < 256; i++, addr += 2 ) {
-        if( !(i%8) ) printf("%04X: ", addr);
-        deviceId = ReadMem_430Xv2(F_WORD, addr);
-        printf("%02x %02x ", deviceId & 0xFF, deviceId >> 8);
-        if( !((i+1) % 8) ) printf("\r\n");
-    }
+/*    delay_ms(1000);*/
 
+
+/*    ReadMemQuick_430Xv2(0x1A00, 256, data);*/
+
+/*    for( i = 0, addr = 0x1A00; i < 256; i++, addr += 2 ) {*/
+/*        if( !(i%8) ) printf("%04X: ", addr);*/
+/*        deviceId = ReadMem_430Xv2(F_WORD, addr);*/
+/*        printf("%02x %02x ", data[i] & 0xFF, data[i] >> 8);*/
+/*        printf("%02x %02x ", dadeviceId & 0xFF, deviceId >> 8);*/
+/*        if( !((i+1) % 8) ) printf("\r\n");*/
+/*    }*/
+
+/*    printf("\r\n--\r\n");*/
+
+/*    for( i = 0, addr = 0x5C00; i < 256; i++, addr += 2 ) {*/
+/*        if( !(i%8) ) printf("%04X: ", addr);*/
+/*        deviceId = ReadMem_430Xv2(F_WORD, addr);*/
+/*        printf("%02x %02x ", data[i] & 0xFF, data[i] >> 8);*/
+/*        printf("%02x %02x ", deviceId & 0xFF, deviceId >> 8);*/
+/*        if( !((i+1) % 8) ) printf("\r\n");*/
+/*    }*/
+
+/*    ReleaseDevice_430Xv2(V_BOR);*/
 
 /*    // The ID pointer is an un-scrambled 20bit value*/
 /*    DeviceIdPointer = ((DeviceIdPointer & 0xFFFF) << 4 )  + (DeviceIdPointer >> 16 );*/
@@ -206,7 +260,6 @@ int main(void)
 
 /*    printf("CPU ID: %04X\r\n", mcu.device_id);*/
 
-    for(;;);
     return 0;
 }
 
