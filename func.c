@@ -119,7 +119,8 @@ void target_release(fet_world_t *world)
 word target_read_word(fet_world_t *world, dword addr)
 {
     word tmp = 0;
-    ReadMemQuick_430Xv2(addr, sizeof(tmp), &tmp);
+/*    printf("READ MEM WORD: %04X %04X\r\n", (word)addr, ReadMem_430Xv2(F_WORD, addr) );*/
+    ReadMemQuick_430Xv2(addr, 1, &tmp);
     return tmp;
 }
 
@@ -138,6 +139,11 @@ void target_jtag_id_support(fet_world_t *world, word id)
 word target_jtag_id(fet_world_t *world)
 {
     return world->jtag_id;
+}
+
+dword data_buf(fet_world_t *world)
+{
+    return (word)world->data;
 }
 
 void data_buf_fill(fet_world_t *world, byte val)

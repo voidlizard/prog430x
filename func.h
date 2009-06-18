@@ -41,6 +41,7 @@ void target_read_mem(fet_world_t *world, dword addr, word len);
 
 void data_buf_fill(fet_world_t *world, byte val);
 void data_buf_dump_txt(fet_world_t *world, dword addr, word len);
+dword data_buf(fet_world_t *world);
 
 #endif
 

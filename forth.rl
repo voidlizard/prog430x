@@ -98,6 +98,10 @@ void serial_interp(reader_t readf, world_t *world) {
         
         action bfill        { spop(astack, tmp); data_buf_fill(world, (byte)tmp); }
 
+        action buf          { spush(astack, data_buf(world)); }
+
+        action memw_inc     { spop(astack, tmp); ttmp = top(astack); top(astack) += sizeof(word); ((word*)ttmp)[0] = (word)tmp; }
+
         ping         = 'ping'    %{log("pong");};
         drop         = 'drop'    %drop;
         swap         = 'swap'    %swap;
@@ -124,10 +128,14 @@ void serial_interp(reader_t readf, world_t *world) {
 
         bfill        = 'bfill' %bfill;
 
+        buf          = 'buf' %buf;
+
+        memw_inc     = '!w+' %memw_inc;
+
         literal = (('$' xdigit+ @{add_hex(&literal, fc);}) | digit+ @{add_dec(&literal, fc);} ) %lit;
         word    = ping | dot_x | dot_c | drop | swap | echo | led
                   | aquire | release | jtag_id | jtag_id_sup | tgt_read_w | tgt_read_m
-                  | dump_buf_txt | xdump | bfill | reset;
+                  | dump_buf_txt | xdump | bfill | buf |  memw_inc | reset;
 
         main := ((literal | word ) space+ %reset_lit )* ;
         
