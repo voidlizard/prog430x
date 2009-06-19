@@ -1,2 +1,2 @@
-export PATH=$PATH:/opt/mspgcc/bin
+export PATH=$PATH:/opt/mspgcc/bin:./scripts
 
