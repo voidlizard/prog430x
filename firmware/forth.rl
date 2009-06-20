@@ -69,7 +69,7 @@ void serial_interp(reader_t readf, world_t *world) {
     %%{
         machine forth;
 
-        action reset_lit { literal = 0;}
+        action reset_lit { literal = 0; }
 
         action reset   { astack_top = astack; literal = 0; }
 

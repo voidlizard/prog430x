@@ -10,7 +10,7 @@ let (|>) f x = x f
 
 exception Bye
 
-type events = EWaitAnyChar of float | EWaitAnswer of float | ESuspend | ERelease
+type events = EWaitAnyChar of float | EWaitAnswer of float | ETimeOfDay of float
 
 type opts  = {
                mutable opt_port     : string;
@@ -85,27 +85,32 @@ let run_script opts (inp,outp) script  =
     in let rec process_answ ch = 
         let _ = match Event.poll( Event.receive ch)  with 
         | Some(EWaitAnswer(t)) -> answ_wait t
-        | _                      -> any_wait ()
+        | Some(ETimeOfDay(t))  -> printf "\n%f\n" t
+        | _                    -> any_wait ()
         in  process_answ ch
 
     in let send_char c = match c with
-    | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.005 
+    | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.005
     | x                        -> output_char outp x;
 
-    in let cmd_lexer = make_lexer ["wait_input";"bye"]
+    in let cmd_lexer = make_lexer ["wait_input";"wait";"timeofday";"bye"]
 
-    in let wait_input f ch = 
+    in let wait f ch = Thread.delay f
+
+    in let rec wait_input f ch = 
         let _ = Event.sync( Event.send ch (EWaitAnswer(f)) )
-        in match Thread.select [in_fd;] [] [] f with
+        in match Unix.select [in_fd;] [] [] f with
         | (x::_,_,_) -> Enum.iter (fun x -> printf "%c" x; fl Pervasives.stdout) (input_chars (in_channel_of_descr x))
-        | _          -> ()
+        | _          -> () 
 
     in let rec cmd_parser ch = parser 
         | [< 'Kwd "wait_input"; 'Float f; >] -> wait_input f ch
+        | [< 'Kwd "wait"; 'Float f; >]       -> wait f ch
+        | [< 'Kwd "timeofday";  >]           -> Event.sync( Event.send ch (ETimeOfDay(Unix.gettimeofday())))
         | [< 'Kwd "bye"; >]                  -> raise Bye 
         | [<>]                               -> ()
 
-    in let exec_cmd cmd ch = 
+    in let exec_cmd cmd ch =
         cmd |> Stream.of_string |> cmd_lexer |> cmd_parser ch
 
     in let rec play ll ch = match ll with
@@ -120,7 +125,6 @@ let run_script opts (inp,outp) script  =
     in let ch = Event.new_channel ()
     in let t1 = Thread.create process_answ ch 
     in let _  = play (List.of_enum script) ch
-    in let _  = Thread.delay 1.5 
     in ()
 
 let _ = 

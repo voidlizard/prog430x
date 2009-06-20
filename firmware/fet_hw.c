@@ -25,6 +25,11 @@ int getchar()
     return ringbuffer_get(&ringbuffer);
 }
 
+void ioreset()
+{
+    ringbuffer_clear(&ringbuffer);
+}
+
 static void init_timer()
 {
     volatile unsigned int i;

@@ -10,6 +10,8 @@
 
 //#define DEFAULT_UART_BITRATE 115200
 #define DEFAULT_UART_BITRATE 230400 
+//#define DEFAULT_UART_BITRATE 38400 
+//#define DEFAULT_UART_BITRATE 460800 
 
 #define JTAGIN       P5IN   // Control ports are on P5.x
 #define JTAGOUT      P5OUT
@@ -42,6 +44,8 @@ void enable_nmi();
 
 void delay_us(word);
 void delay_ms(uint32_t);
+
+void ioreset();
 
 #endif
 

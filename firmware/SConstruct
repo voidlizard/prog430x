@@ -44,7 +44,7 @@ FW_FILES = [
 
 FILES = FW_FILES 
 
-ragel = Builder(action = 'ragel -e -C -T1  $SOURCES -o $TARGETS',
+ragel = Builder(action = 'ragel -e -C -G2  $SOURCES -o $TARGETS',
 			    suffix = '.c',
 			    src_suffix = '.rl')
 
