@@ -27,19 +27,20 @@ let dump_block_f block =
     printf "buf\n" ;
     List.iteri (fun i x -> printf "$%04X !w+ %s" x (if (i+1) mod 8 == 0 then "\n" else " ") ) block.b_data ;
     printf "\n$%04X !xfe\n" block.b_addr ; 
-    printf "%%wait_input 2.0\n" ;
+    printf "%%wait_input 0.3\n" ;
     printf "$%04X $%04X !xfwm\n" block.b_addr (List.length block.b_data) ;
-    printf "%%wait_input 2.0\n\n"
+    printf "%%wait_input 0.4\n\n"
 
 let dump_header_f () = 
     printf "0 echo\n";
     printf "1 led\n";
-    printf "aquire\n"
+    printf "aquire\n";
+    printf "%%wait_input 0.2\n"
 
 let dump_footer_f () =
     printf "\n0 led\n";
     printf "release \n" ;
-    printf "%%wait_for_input 2.0\n\n"
+    printf "%%wait_input 2.0\n\n"
 
 let _ = 
   let lex = Lexing.from_channel (Pervasives.stdin)

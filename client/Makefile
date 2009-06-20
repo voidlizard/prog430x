@@ -4,7 +4,7 @@ OCAMLBUILD=ocamlbuild
 
 .PHONY: install
 
-default: byte 
+default: native 
 
 all: byte native
 

@@ -8,7 +8,7 @@ static void init_uarts();
 
 RINGBUFFER_NEW(ringbuffer, 512);
 
-static volatile uint32_t __ticks_ms = 0;
+volatile uint32_t __ticks_ms = 0;
 
 static void __init_UART0(void);
 

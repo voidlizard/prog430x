@@ -134,14 +134,13 @@ void target_read_mem(fet_world_t *world, dword addr, word len)
 void target_erase_flash(fet_world_t *world, dword addr)
 {
     EraseFLASH_430Xv2_wo_release(ERASE_SGMT, addr);
-/*    EraseFLASH_430Xv2(ERASE_SGMT, addr);*/
     log("target_ready");
 }
+
 
 void target_write_flash(fet_world_t *world, dword addr, word len)
 {
     WriteFLASH_430Xv2_wo_release(addr, len, world->data);
-/*    WriteFLASH_430Xv2(addr, len, world->data);*/
     log("target_ready");
 }
 

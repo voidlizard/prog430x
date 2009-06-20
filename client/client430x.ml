@@ -10,7 +10,7 @@ let (|>) f x = x f
 
 exception Bye
 
-type events = EWaitAnyChar of float | EWaitAnswer of float | ETimeOfDay of float
+type events = EWaitAnyChar of float | EWaitAnswer of float | ETimeOfDay of float | EAnsw | ETimeout
 
 type opts  = {
                mutable opt_port     : string;
@@ -75,19 +75,27 @@ let run_script opts (inp,outp) script  =
     let flush () = Pervasives.flush outp
     in let in_fd = descr_of_in_channel inp
 
-    in let answ_wait t = Thread.delay t
+    in let ch_a = Event.new_channel ()
+    in let ch_b = Event.new_channel ()
+    
+    in let dump_out c = Enum.iter (fun x -> printf "%c" x; fl Pervasives.stdout) (input_chars c)
 
-    in let any_wait () = 
-        match Thread.select [in_fd;] [] [] (-1.0) with
-        | (x::_,_,_) -> Enum.iter (fun x -> printf "%c" x; fl Pervasives.stdout) (input_chars (in_channel_of_descr x)) 
+    in let answ_wait t = 
+        match Thread.select [in_fd;] [] [] t with
+                | (x::_,_,_) -> Event.sync( (Event.send ch_b EAnsw) ); dump_out (in_channel_of_descr x)
+                | _          -> Event.sync( (Event.send ch_b ETimeout) )
+
+    in let inp_wait () = 
+        match Thread.select [in_fd;] [] [] 0.0001 with
+        | (x::_,_,_) -> dump_out (in_channel_of_descr x)
         | _          -> ()
 
-    in let rec process_answ ch = 
-        let _ = match Event.poll( Event.receive ch)  with 
+    in let rec process_answ () = 
+        let evt = Event.poll (Event.receive ch_a)
+        in let _ =  match evt with
         | Some(EWaitAnswer(t)) -> answ_wait t
-        | Some(ETimeOfDay(t))  -> printf "\n%f\n" t
-        | _                    -> any_wait ()
-        in  process_answ ch
+        | _                    -> inp_wait ()
+        in process_answ ()
 
     in let send_char c = match c with
     | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.0003
@@ -95,36 +103,35 @@ let run_script opts (inp,outp) script  =
 
     in let cmd_lexer = make_lexer ["wait_input";"wait";"timeofday";"bye"]
 
-    in let wait f ch = Thread.delay f
+    in let wait f = Thread.delay f
 
-    in let rec wait_input f ch = 
-        let _ = Event.sync( Event.send ch (EWaitAnswer(f)) )
-        in match Unix.select [in_fd;] [] [] f with
-        | (x::_,_,_) -> Enum.iter (fun x -> printf "%c" x; fl Pervasives.stdout) (input_chars (in_channel_of_descr x))
-        | _          -> () 
+    in let rec wait_input f =
+        let t1 = Unix.gettimeofday ()
+        in let _ = Event.sync ( Event.send ch_a (EWaitAnswer(f)) )
+        in match Event.select [(Event.receive ch_b);] with
+        | EAnsw   -> (); (*printf "Got  answ in %f\n" ( Unix.gettimeofday() -. t1)*)
+        | _       -> (); (*printf "Got timeout in %f\n" ( Unix.gettimeofday() -. t1)*)
 
-    in let rec cmd_parser ch = parser 
-        | [< 'Kwd "wait_input"; 'Float f; >] -> wait_input f ch
-        | [< 'Kwd "wait"; 'Float f; >]       -> wait f ch
-        | [< 'Kwd "timeofday";  >]           -> Event.sync( Event.send ch (ETimeOfDay(Unix.gettimeofday())))
+    in let rec cmd_parser = parser 
+        | [< 'Kwd "wait_input"; 'Float f; >] -> wait_input f
+        | [< 'Kwd "wait"; 'Float f; >]       -> wait f
+        | [< 'Kwd "timeofday";  >]           -> ()
         | [< 'Kwd "bye"; >]                  -> raise Bye 
         | [<>]                               -> ()
 
-    in let exec_cmd cmd ch =
-        cmd |> Stream.of_string |> cmd_lexer |> cmd_parser ch
+    in let exec_cmd cmd =
+        cmd |> Stream.of_string |> cmd_lexer |> cmd_parser
 
-    in let rec play ll ch = match ll with
+    in let rec play ll = match ll with
         | '%' :: xs -> let cmd = List.takewhile (fun x -> x != '\n') xs
                        in let rest = List.drop ((List.length cmd) + 1) xs
-                       in let _ = exec_cmd (String.implode cmd) ch
-                       in play rest ch
-        | x :: xs   -> send_char x ; play xs ch
+                       in let _ = exec_cmd (String.implode cmd)
+                       in play rest
+        | x :: xs   -> send_char x ; play xs
         | []        -> ()
 
-    
-    in let ch = Event.new_channel ()
-    in let t1 = Thread.create process_answ ch 
-    in let _  = play (List.of_enum script) ch
+    in let t1 = Thread.create process_answ ()
+    in let _  = play (List.of_enum script)
     in ()
 
 let _ = 
