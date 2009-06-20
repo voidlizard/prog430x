@@ -127,8 +127,22 @@ word target_read_word(fet_world_t *world, dword addr)
 void target_read_mem(fet_world_t *world, dword addr, word len)
 {
     word to_read = 0;
-    to_read = len <= DATA_BUF_SIZE_WORDS*2 ? len : DATA_BUF_SIZE_WORDS*2;
+    to_read = len <= DATA_BUF_SIZE_WORDS ? len : DATA_BUF_SIZE_WORDS;
     ReadMemQuick_430Xv2(addr, to_read, world->data);
+}
+
+void target_erase_flash(fet_world_t *world, dword addr)
+{
+/*    EraseFLASH_430Xv2_wo_release(ERASE_SGMT, addr);*/
+    EraseFLASH_430Xv2(ERASE_SGMT, addr);
+    log("target_ready");
+}
+
+void target_write_flash(fet_world_t *world, dword addr, word len)
+{
+/*    WriteFLASH_430Xv2_wo_release(addr, len, world->data);*/
+    WriteFLASH_430Xv2(addr, len, world->data);
+    log("target_ready");
 }
 
 void target_jtag_id_support(fet_world_t *world, word id)
@@ -153,7 +167,7 @@ void data_buf_fill(fet_world_t *world, byte val)
 
 void data_buf_dump_txt(fet_world_t *world, dword addr, word len)
 {
-    int i = 0;
+    word i = 0;
     word *data;
 
     data = world->data;
@@ -167,13 +181,12 @@ void data_buf_dump_txt(fet_world_t *world, dword addr, word len)
         printf("@%04X\r\n", (word)(addr));
     }
 
-    for( i = 0; i < len/2; i++ ) {
+    for( i = 0; i < len; i++ ) {
         printf("%02X %02X ", data[i] & 0xFF, data[i] >> 8);
         if( !((i+1) % 8) ) printf("\r\n");
     }
 
-    printf("\r\nq\r\n");
-
+    printf("\r\n");
 }
 
 

@@ -1,15 +1,24 @@
-
+open Genlex
 open Printf
 open Unix
 open Str
 open ExtString
+open ExtList
 open Std
+
+let (|>) f x = x f
+
+exception Bye
+
+type events = EWaitAnyChar of float | EWaitAnswer of float | ESuspend | ERelease
 
 type opts  = {
                mutable opt_port     : string;
                mutable opt_baudrate : int;
                mutable opt_script   : string 
              }
+
+let fl = Pervasives.flush
 
 let get_args () =
 
@@ -64,25 +73,59 @@ let port opts =
 
 let run_script opts (inp,outp) script  =
     let flush () = Pervasives.flush outp
+    in let in_fd = descr_of_in_channel inp
 
-    in let rec process_answ () = 
-        let fd = descr_of_in_channel inp
-        in let _  = match Thread.select [fd;] [] [] (-1.0) with
-        | (x::_,_,_) -> Enum.iter (fun x -> printf "%c" x; Pervasives.flush Pervasives.stdout) (input_chars (in_channel_of_descr x)) 
+    in let answ_wait t = Thread.delay t
+
+    in let any_wait () = 
+        match Thread.select [in_fd;] [] [] (-1.0) with
+        | (x::_,_,_) -> Enum.iter (fun x -> printf "%c" x; fl Pervasives.stdout) (input_chars (in_channel_of_descr x)) 
         | _          -> ()
-        in  process_answ ()
+
+    in let rec process_answ ch = 
+        let _ = match Event.poll( Event.receive ch)  with 
+        | Some(EWaitAnswer(t)) -> answ_wait t
+        | _                      -> any_wait ()
+        in  process_answ ch
 
     in let send_char c = match c with
     | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.005 
     | x                        -> output_char outp x;
 
-    in let t1 = Thread.create process_answ ()
-    in let _  = Enum.iter send_char script
-    in let _  = Thread.delay 2.0
+    in let cmd_lexer = make_lexer ["wait_input";"bye"]
+
+    in let wait_input f ch = 
+        let _ = Event.sync( Event.send ch (EWaitAnswer(f)) )
+        in match Thread.select [in_fd;] [] [] f with
+        | (x::_,_,_) -> Enum.iter (fun x -> printf "%c" x; fl Pervasives.stdout) (input_chars (in_channel_of_descr x))
+        | _          -> ()
+
+    in let rec cmd_parser ch = parser 
+        | [< 'Kwd "wait_input"; 'Float f; >] -> wait_input f ch
+        | [< 'Kwd "bye"; >]                  -> raise Bye 
+        | [<>]                               -> ()
+
+    in let exec_cmd cmd ch = 
+        cmd |> Stream.of_string |> cmd_lexer |> cmd_parser ch
+
+    in let rec play ll ch = match ll with
+        | '%' :: xs -> let cmd = List.takewhile (fun x -> x != '\n') xs
+                       in let rest = List.drop ((List.length cmd) + 1) xs
+                       in let _ = exec_cmd (String.implode cmd) ch
+                       in play rest ch
+        | x :: xs   -> send_char x ; play xs ch
+        | []        -> ()
+
+    
+    in let ch = Event.new_channel ()
+    in let t1 = Thread.create process_answ ch 
+    in let _  = play (List.of_enum script) ch
+    in let _  = Thread.delay 1.5 
     in ()
 
 let _ = 
     let opts = get_args ()
     in let _ = printf "Running %s %d %s\n\n" opts.opt_port opts.opt_baudrate opts.opt_script
-    in run_script opts (port opts) (script opts)
+    in try  run_script opts (port opts) (script opts)
+       with Bye -> print_endline "Bye!"
 

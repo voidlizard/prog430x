@@ -1,0 +1,3 @@
+"client430x.ml": use_extLib, use_unix, thread, use_threads, pp(camlp4of)
+<client430x.{byte,native,ml}>: use_extLib, use_unix, thread
+

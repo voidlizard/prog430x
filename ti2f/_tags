@@ -1,0 +1,3 @@
+"ti2f.ml": use_extLib
+<ti2f.{byte,native,ml}>: use_extLib
+

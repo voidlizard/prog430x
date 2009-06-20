@@ -1,10 +1,10 @@
-TARGET=client430x
+TARGET=ti2f
 
 OCAMLBUILD=ocamlbuild
 
 .PHONY: install
 
-default: byte 
+default: native 
 
 all: byte native
 

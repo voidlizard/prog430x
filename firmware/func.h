@@ -39,8 +39,13 @@ word target_jtag_id(fet_world_t *);
 word target_read_word(fet_world_t *world, dword addr);
 void target_read_mem(fet_world_t *world, dword addr, word len);
 
+void target_erase_flash(fet_world_t *world, dword addr);
+void target_write_flash(fet_world_t *world, dword addr, word len);
+
 void data_buf_fill(fet_world_t *world, byte val);
 void data_buf_dump_txt(fet_world_t *world, dword addr, word len);
+
+
 dword data_buf(fet_world_t *world);
 
 #endif

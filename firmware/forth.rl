@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "fet_hw.h"
 #include "func.h"
 
 typedef fet_world_t world_t;
@@ -92,7 +93,7 @@ void serial_interp(reader_t readf, world_t *world) {
 
         action tgt_read_m { spop(astack, tmp); spop(astack, ttmp); target_read_mem(world, ttmp, tmp); }
 
-        action dump_buf_txt { data_buf_dump_txt(world, (word)(world->data), DATA_BUF_SIZE_WORDS*2 ); }
+        action dump_buf_txt { data_buf_dump_txt(world, (word)(world->data), DATA_BUF_SIZE_WORDS ); }
         
         action  xdump       { spop(astack, tmp); spop(astack, ttmp); data_buf_dump_txt(world, ttmp, tmp ); }
         
@@ -102,7 +103,12 @@ void serial_interp(reader_t readf, world_t *world) {
 
         action memw_inc     { spop(astack, tmp); ttmp = top(astack); top(astack) += sizeof(word); ((word*)ttmp)[0] = (word)tmp; }
 
+		action tgt_xfe      { spop(astack, tmp); target_erase_flash(world, tmp); }
+
+		action tgt_xfwm     { spop(astack, tmp); spop(astack, ttmp); target_write_flash(world, ttmp, tmp); }  
+
         ping         = 'ping'    %{log("pong");};
+        sleep_ms     = 'sleep_ms' %{ spop(astack, tmp);  delay_ms(tmp); log("target_ready"); };
         drop         = 'drop'    %drop;
         swap         = 'swap'    %swap;
         dup          = 'dup'     %dup;
@@ -124,7 +130,7 @@ void serial_interp(reader_t readf, world_t *world) {
 
         xdump        = '@xdump' %xdump;
         
-        dump_buf_txt = '@dump-buf-txt' %dump_buf_txt;
+        dump_buf_txt = '@bdump' %dump_buf_txt;
 
         bfill        = 'bfill' %bfill;
 
@@ -132,10 +138,16 @@ void serial_interp(reader_t readf, world_t *world) {
 
         memw_inc     = '!w+' %memw_inc;
 
+		tgt_xfe      = '!xfe'    %tgt_xfe;
+		tgt_xfwm     = '!xfwm'   %tgt_xfwm;
+
+
+
         literal = (('$' xdigit+ @{add_hex(&literal, fc);}) | digit+ @{add_dec(&literal, fc);} ) %lit;
         word    = ping | dot_x | dot_c | drop | swap | echo | led
                   | aquire | release | jtag_id | jtag_id_sup | tgt_read_w | tgt_read_m
-                  | dump_buf_txt | xdump | bfill | buf |  memw_inc | reset;
+                  | dump_buf_txt | xdump | bfill | buf |  memw_inc 
+				  | tgt_xfe | tgt_xfwm | sleep_ms |  reset;
 
         main := ((literal | word ) space+ %reset_lit )* ;
         
