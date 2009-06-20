@@ -167,7 +167,12 @@ void serial_interp(reader_t readf, world_t *world) {
 			break;
 		}
 
-		len = readf(p, space, world->echo);
+        *p  = getchar();
+        len = 1;
+
+        if( world->echo ) {
+            putchar(*p);
+        }
 
 		pe = p + len;
 

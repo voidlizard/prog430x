@@ -90,7 +90,7 @@ let run_script opts (inp,outp) script  =
         in  process_answ ch
 
     in let send_char c = match c with
-    | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.005
+    | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.0003
     | x                        -> output_char outp x;
 
     in let cmd_lexer = make_lexer ["wait_input";"wait";"timeofday";"bye"]

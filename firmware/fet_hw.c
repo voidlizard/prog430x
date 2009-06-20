@@ -6,7 +6,7 @@
 static void init_timer();
 static void init_uarts();
 
-RINGBUFFER_NEW(ringbuffer, 40);
+RINGBUFFER_NEW(ringbuffer, 512);
 
 static volatile uint32_t __ticks_ms = 0;
 
