@@ -41,7 +41,7 @@ int serial_reader(char *buf, int size, int echo)
         c = getchar();
         if( echo ) {
             if( c == '\n' || c == '\r' ) printf("\r\n");
-            putchar(c);
+            else putchar(c);
         }
         *buf++ = c;
         read++;
