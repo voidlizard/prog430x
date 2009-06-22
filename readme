@@ -2,9 +2,12 @@
 MSP430x5xx Programming software
 ===================================
 
+Autthor: Dmitry Zuikov <dzuikov@gmail.com>
+Version: 0.1a
+
 
 GoodFET 11 Hardware
-===================================
+===================
 
 You may get the GoodFET11 schemes at http://goodfet.sf.net
 
@@ -12,7 +15,7 @@ The only modification against the original GoodFET is using quartz @7.3728Mhz
 
 
 Build Prerequisites
-====================================
+===================
 
  - mspgcc toolchain
  - SCons build system ( http://www.scons.org )
@@ -21,33 +24,33 @@ Build Prerequisites
  - srec package (tool for firmware conversion )
 
 Build
-===================================
+=====
 
 Firmware
------------------------------------
+--------
 
 	cd firmware/
 	scons
 
 Client
------------------------------------
+------
 
     cd client430x
     make && make install
 
 
 ti2f
------------------------------------
+----
 
     cd ti2f
 	make && make install
 
 
 Using
-====================================
+=====
 
 Firmware for GoodFET 11
-------------------------------------
+-----------------------
 
 The firmware may be uploaded into the device using BSL or JTAG.
 To upload by BSL just plug the GoodFET in and upload the firmware while the led is blinking.
@@ -59,7 +62,7 @@ When the led stop blinking the device is ready to work
 
 
 Client
-------------------------------------
+------
 
 This is a tool for batch interacting with the firmware. It accepts mini-forth files and plays them.
 Using the tool:
@@ -87,7 +90,7 @@ Exit the client immidiately
 
 
 ti2f
-------------------------------------
+----
 
 It is a tool for converting TI TXT firmware files into mini-forth files.
 Using:
@@ -96,7 +99,7 @@ Using:
 
 
 Put it all together
-------------------------------------
+-------------------
 
 led.c:
 
@@ -140,7 +143,7 @@ srec_cat ./led.hex -intel -Output led.txt -Texas_Instruments_TeXT
 
 
 Mini-forth
-------------------------------------
+----------
 
 The mini-forth consists of literals and words separated by spaces.
 Literals are hexadecimal values started from '$' character. Words may contains any printable characters.
@@ -177,18 +180,18 @@ buf         ( -- a )       ; Get the inner buffer address
 Examples:
 
 Ping
-~~~~~~~~~~~~~~
+~~~~
     ping
     pong
    
 Turn echo on
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~
     1 echo
 
 Read target's memory
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
-N.B. this example  contains client's directives, which causes to errors if they sent to devices
+N.B. this example  contains client's directives, which causes to errors if they sent to devices directly (i.e. not by the client)
 
 	0 echo
 	aquire
@@ -211,9 +214,9 @@ N.B. this example  contains client's directives, which causes to errors if they 
 
 
 Write target's flash
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
-N.B. this example  contains client's directives, which causes to parsing errors if they sent to the device
+N.B. this example  contains client's directives, which causes to parsing errors if they sent to the device directly
 
 	0 echo
 	1 led
