@@ -21,7 +21,7 @@ Build Prerequisites
  - SCons build system ( http://www.scons.org )
  - OCaml language (including ocamlbuild tool )
  - Ragel State Machine Compiler ( http://www.complang.org/ragel/ )
- - srec package (tool for firmware conversion )
+ - srecord package ( collection of powerful tools for manipulating EPROM load files  )
 
 Build
 =====
