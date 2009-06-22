@@ -8,7 +8,7 @@ msp430-objcopy -O ihex led.elf led.hex
 # Step 3. Convert to TI TXT
 srec_cat ./led.hex -intel -Output led.txt -Texas_Instruments_TeXT
 
-# Step 4. Convert to mini-mort
+# Step 4. Convert to mini-fort
 ../../bin/ti2f < ./led.txt > led.f
 
 # Step 5. Upload
