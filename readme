@@ -20,6 +20,7 @@ Build Prerequisites
  - mspgcc toolchain
  - SCons build system ( http://www.scons.org )
  - OCaml language (including ocamlbuild tool )
+ - OCaml ExtLib ( libextlib-ocaml-dev )
  - Ragel State Machine Compiler ( http://www.complang.org/ragel/ )
  - srecord package ( collection of powerful tools for manipulating EPROM load files  )
 
