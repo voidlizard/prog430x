@@ -51,14 +51,7 @@ int serial_reader(char *buf, int size, int echo)
 
 int main(void)
 {
-    word jtagId = 0x00, i;
-    word deviceId = 0x00;
-    unsigned long addr = 0;
     world_t world;
-
-    msp430x_mcu_info_t mcu;
-
-    mcu_info_init(&mcu);
 
     init_hardware();
  
