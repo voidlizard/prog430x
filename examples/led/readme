@@ -1,0 +1,17 @@
+
+# Step 1. Compile
+msp430-gcc -Os -mmcu=msp430x5418 ./led.c -o led.elf
+
+# Step 2. Converto to Intel Hex
+msp430-objcopy -O ihex led.elf led.hex
+
+# Step 3. Convert to TI TXT
+srec_cat ./led.hex -intel -Output led.txt -Texas_Instruments_TeXT
+
+# Step 4. Convert to mini-mort
+../../bin/ti2f < ./led.txt > led.f
+
+# Step 5. Upload
+../../bin/client430x ./led.f
+
+

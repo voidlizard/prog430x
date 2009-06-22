@@ -1,0 +1,256 @@
+===================================
+MSP430x5xx Programming software
+===================================
+
+
+GoodFET 11 Hardware
+===================================
+
+You may get the GoodFET11 schemes at http://goodfet.sf.net
+
+The only modification against the original GoodFET is using quartz @7.3728Mhz
+
+
+Build Prerequisites
+====================================
+
+ - SCons build system ( http://www.scons.org )
+ - OCaml language (including ocamlbuild tool )
+ - srec package (tool for firmware conversion )
+
+
+Build
+===================================
+
+Firmware
+-----------------------------------
+
+	cd firmware/
+	scons
+
+Client
+-----------------------------------
+
+    cd client430x
+    make && make install
+
+
+ti2f
+-----------------------------------
+
+    cd ti2f
+	make && make install
+
+
+Using
+====================================
+
+Firmware for GoodFET 11
+------------------------------------
+
+The firmware may be uploaded into the device using BSL or JTAG.
+To upload by BSL just plug the GoodFET in and upload the firmware while the led is blinking.
+
+Ex:
+    msp430-bsl --invert-test --invert-reset --f1x -c /dev/ttyUSB0 -e -r -p ./prog430x.elf
+
+When the led stop blinking the device is ready to work
+
+
+Client
+------------------------------------
+
+This is a tool for batch interacting with the firmware. It accepts mini-forth files and plays them.
+Using the tool:
+
+    client430x [--port PORT]|[--baudrate]|[--help] file.f
+       --port port, default: /dev/ttyUSB0
+       --baudrate baudrate, default: 230400
+       -help  Display this list of options
+       --help  Display this list of options
+
+The file contains mini-forth instructions and some client's directives. Each directive starts with '%' character.
+The directives are:
+
+%wait_for_input timeout
+
+stops playing the file until some input from the GoodFET received. Timeout is in  seconds in float format, i.e 0.1, 0.2, etc
+
+%wait timeout
+
+wait for timeout seconds
+
+%bye
+
+Exit the client immidiately
+
+
+ti2f
+------------------------------------
+
+It is a tool for converting TI TXT firmware files into mini-forth files.
+Using:
+    ti2f < file.txt > file.f
+    
+
+
+Put it all together
+------------------------------------
+
+led.c:
+
+	#include <msp430x54xx.h>
+	#include <stdlib.h>
+	#include <io.h>
+
+	__attribute__((naked, section(".init3"))) void __low_level_init(void)
+	{
+	 WDTCTL = WDTPW + WDTHOLD;
+	/*// any other low level initialization you want*/
+	}
+
+	int main(void) {
+
+		WDTCTL= WDTPW + WDTHOLD;
+
+		P3DIR = 0xFF;
+		P3OUT = 0xFF;
+
+		for(;;) _NOP();
+
+		return 0;
+	}
+
+
+# Step 1. Compile
+msp430-gcc -Os -mmcu=msp430x5418 ./led.c -o led.elf
+
+# Step 2. Converto to Intel Hex
+msp430-objcopy -O ihex led.elf led.hex
+
+# Step 3. Convert to TI TXT
+srec_cat ./led.hex -intel -Output led.txt -Texas_Instruments_TeXT
+
+# Step 4. Convert to mini-mort
+../../bin/ti2f < ./led.txt > led.f
+
+# Step 5. Upload
+../../bin/client430x ./led.f
+
+
+Mini-forth
+------------------------------------
+
+The mini-forth consists of literals and words separated by spaces.
+Literals are hexadecimal values started from '$' character. Words may contains any printable characters.
+
+Every literal is placed into the stack as entered.
+
+
+The supported word's list:
+
+ping        ( -- )         ; Print pong
+sleep_ms    ( a -- )       ; Wait for a milliseconds
+drop        ( a -- )       ; Drop the top of stack
+swap        (a b -- b a)   ; Swap two upper items on stack
+dup         ( a -- a a )   ; Duplicate top of stack
+.x          ( a -- )       ; Print top of stack as hex
+            
+.c          ( a -- )       ; Print top of stack as character 
+echo        ( a -- )       ; Turn echo ON/OFF (0 - off, 1 - on)
+led         ( a -- )       ; Turn the lef ON/OFF (0 - off, 1 - on)
+reset       ( -- )         ; Reset the stack ( stack_top = stack )
+aquire      ( -- )         ; Start JTAG
+release     ( -- )         ; Release the target
+jtag-id     ( -- )         ; Print the target's JTAG_ID
+@xw         ( a -- b )     ; Read word at addr a
+@xm         ( a b -- )     ; Read memory block at addr b with size a into the inner buffer
+@xdump      ( a b -- )     ; Dump the inner buffer in TI TXT format ( a words starts with b addr)
+@bdump      ( -- )         ; Dump the whole inner buffer in TI TXT format, prints the real buffer size
+bfill       ( a -- )       ; Fill the inner buffer with a pattern (byte)
+buf         ( -- a )       ; Get the inner buffer address 
+!w+         ( a b -- b+2)  ; Write a word at b addr, improve the addr by 2
+!xfe        ( a -- )       ; Erase the flash memory segment
+!xfwm       ( a b -- )     ; Write flash memory at addr b, a words 
+
+Examples:
+
+Ping
+~~~~~~~~~~~~~~
+    ping
+    pong
+   
+Turn echo on
+~~~~~~~~~~~~~~
+    1 echo
+
+
+Read target's memory
+~~~~~~~~~~~~~~~~~~~~~
+
+N.B. this example  contains client's directives, which causes to errors if they sent to devices
+
+
+0 echo
+aquire
+
+%wait 0.5
+
+$5C00 $100 @xm
+$5C00 $100 @xdump
+
+%wait 2.0
+
+
+$FF80 $0040 @xm
+$FF80 $0040 @xdump
+
+%wait 2.0
+
+release
+%wait 1.0
+
+
+Write target's flash
+~~~~~~~~~~~~~~~~~~~~~~~
+
+N.B. this example  contains client's directives, which causes to errors if they sent to devices
+
+0 echo
+1 led
+aquire
+%wait_input 0.2
+reset
+buf
+$4031 !w+  $5C00 !w+  $40B2 !w+  $5A80 !w+  $015C !w+  $403F !w+  $0000 !w+  $930F !w+ 
+$2405 !w+  $832F !w+  $4F9F !w+  $5C52 !w+  $1C00 !w+  $23FB !w+  $403F !w+  $0000 !w+ 
+$930F !w+  $2404 !w+  $831F !w+  $43CF !w+  $1C00 !w+  $23FC !w+  $4030 !w+  $5C36 !w+ 
+$4030 !w+  $5C34 !w+  $1300 !w+  $4031 !w+  $5C00 !w+  $40B2 !w+  $5A80 !w+  $015C !w+ 
+$43F2 !w+  $0224 !w+  $43F2 !w+  $0222 !w+  $4303 !w+  $3FFE !w+  $4030 !w+  $5C50 !w+ 
+$3FFF !w+  
+$5C00 !xfe
+%wait_input 0.3
+$5C00 $0029 !xfwm
+%wait_input 0.4
+
+reset
+buf
+$5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+ 
+$5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+ 
+$5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+ 
+$5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+ 
+$5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+ 
+$5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+ 
+$5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+ 
+$5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C30 !w+  $5C00 !w+ 
+
+$FF80 !xfe
+%wait_input 0.3
+$FF80 $0040 !xfwm
+%wait_input 0.4
+
+
+0 led
+release 
+%wait_input 2.0
+
