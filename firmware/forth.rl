@@ -13,7 +13,7 @@ typedef fet_world_t world_t;
 #include "stack.h"
 
 %%{
-	machine forth;
+    machine forth;
     write data;
 }%%
 
@@ -58,10 +58,10 @@ void add_hex(dword *val, int c)
 }
 
 void serial_interp(reader_t readf, world_t *world) {
-	char *p  = 0, *pe = 0, *eof = 0, *ts = 0, *te = 0;
-	int cs, have = 0, space = 0, len = 0;
-	int done = 0;
-	char buf[BUFSIZE];
+    char *p  = 0, *pe = 0, *eof = 0, *ts = 0, *te = 0;
+    int cs, have = 0, space = 0, len = 0;
+    int done = 0;
+    char buf[BUFSIZE];
 
     dword literal = 0, tmp = 0, ttmp = 0;
     DECL_STACK(dword, astack, 16);
@@ -103,9 +103,9 @@ void serial_interp(reader_t readf, world_t *world) {
 
         action memw_inc     { spop(astack, tmp); ttmp = top(astack); top(astack) += sizeof(word); ((word*)ttmp)[0] = (word)tmp; }
 
-		action tgt_xfe      { spop(astack, tmp); target_erase_flash(world, tmp); }
+        action tgt_xfe      { spop(astack, tmp); target_erase_flash(world, tmp); }
 
-		action tgt_xfwm     { spop(astack, tmp); spop(astack, ttmp); target_write_flash(world, ttmp, tmp); }  
+        action tgt_xfwm     { spop(astack, tmp); spop(astack, ttmp); target_write_flash(world, ttmp, tmp); }  
 
         ping         = 'ping'    %{log("pong");};
         sleep_ms     = 'sleep_ms' %{ spop(astack, tmp);  delay_ms(tmp); log("target_ready"); };
@@ -138,8 +138,8 @@ void serial_interp(reader_t readf, world_t *world) {
 
         memw_inc     = '!w+' %memw_inc;
 
-		tgt_xfe      = '!xfe'    %tgt_xfe;
-		tgt_xfwm     = '!xfwm'   %tgt_xfwm;
+        tgt_xfe      = '!xfe'    %tgt_xfe;
+        tgt_xfwm     = '!xfwm'   %tgt_xfwm;
 
 
 
@@ -147,7 +147,7 @@ void serial_interp(reader_t readf, world_t *world) {
         word    = ping | dot_x | dot_c | drop | swap | echo | led
                   | aquire | release | jtag_id | jtag_id_sup | tgt_read_w | tgt_read_m
                   | dump_buf_txt | xdump | bfill | buf |  memw_inc 
-				  | tgt_xfe | tgt_xfwm | sleep_ms |  reset;
+                  | tgt_xfe | tgt_xfwm | sleep_ms |  reset;
 
         main := ((literal | word ) space+ %reset_lit )* ;
         
@@ -156,42 +156,42 @@ void serial_interp(reader_t readf, world_t *world) {
 
     INIT_STACK(astack, 16);    
 
-	while( !done )
-	{
+    while( !done )
+    {
         eof = 0;
-		p = buf + have;
-		space = BUFSIZE - have;
+        p = buf + have;
+        space = BUFSIZE - have;
 
-		if( !space ) 
-		{
-			break;
-		}
+        if( !space ) 
+        {
+            break;
+        }
 
         len = readf(p, space, world->echo);
 
-		pe = p + len;
+        pe = p + len;
 
-		if( len < space )
-		{
-			done = 1;
-			eof = pe;
-		}
+        if( len < space )
+        {
+            done = 1;
+            eof = pe;
+        }
 
-		%% write exec;
+        %% write exec;
 
-		if( cs == forth_error ) {
-			break;
-		}
+        if( cs == forth_error ) {
+            break;
+        }
 
-		if( ts == 0 )
-			have = 0;
-		else
-		{
-			have = pe - ts;
-			memmove( buf, ts, have );
-			te = buf + (te-ts);
-			ts = buf;
-		}
-	}
+        if( ts == 0 )
+            have = 0;
+        else
+        {
+            have = pe - ts;
+            memmove( buf, ts, have );
+            te = buf + (te-ts);
+            ts = buf;
+        }
+    }
 }
 

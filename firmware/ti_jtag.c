@@ -35,7 +35,7 @@ unsigned long AllShifts(word Format, unsigned long Data)
       SetTCK();
       TDOword <<= 1;                    // TDO could be any port pin
       if (ScanTDO() != 0)
-        TDOword++;	
+        TDOword++;    
     }
 
     // common exit

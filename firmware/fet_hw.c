@@ -68,7 +68,7 @@ void init_hardware()
 }
 
 static void __init_UART0(void) {
-	P3SEL |= 0x30;                            // P3.6,7 = USART1 TXD/RXD
+    P3SEL |= 0x30;                            // P3.6,7 = USART1 TXD/RXD
     ME1 |= UTXE0 + URXE0;                     // Enable USART0 TXD/RXD
     UCTL0 |= CHAR;                            // 8-bit character
     UTCTL0 |= SSEL0;                          // UCLK = ACLK
@@ -99,8 +99,8 @@ interrupt (UART0TX_VECTOR) wakeup uart0_tx_isr( void )
 
 interrupt (NMI_VECTOR) wakeup nmi_isr (void)
 {
-	IFG1 &= ~NMIIFG;                          // Reclear NMI flag in case bounce
-	IE1 |= NMIIE;                             // Enable NMI
+    IFG1 &= ~NMIIFG;                          // Reclear NMI flag in case bounce
+    IE1 |= NMIIE;                             // Enable NMI
     //P1OUT ^= 0x01;
 }
 

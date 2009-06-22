@@ -44,7 +44,7 @@ void init_target()
 
 void release_target()
 {
-	JTAGDIR  =  0x00;	    // VCC is off, all I/Os are HI-Z
+    JTAGDIR  =  0x00;        // VCC is off, all I/Os are HI-Z
     delay_ms(50);
 }
 
