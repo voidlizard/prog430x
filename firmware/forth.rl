@@ -105,6 +105,8 @@ void serial_interp(reader_t readf, world_t *world) {
 
         action tgt_xfe      { spop(astack, tmp); target_erase_flash(world, tmp); }
 
+        action tgt_xfem     { spop(astack, tmp); target_erase_flash_mass(world, tmp); }
+
         action tgt_xfwm     { spop(astack, tmp); spop(astack, ttmp); target_write_flash(world, ttmp, tmp); }  
 
         ping         = 'ping'    %{log("pong");};
@@ -139,6 +141,7 @@ void serial_interp(reader_t readf, world_t *world) {
         memw_inc     = '!w+' %memw_inc;
 
         tgt_xfe      = '!xfe'    %tgt_xfe;
+        tgt_xfem     = '!xfem'   %tgt_xfem;
         tgt_xfwm     = '!xfwm'   %tgt_xfwm;
 
 
@@ -147,7 +150,7 @@ void serial_interp(reader_t readf, world_t *world) {
         word    = ping | dot_x | dot_c | drop | swap | echo | led
                   | aquire | release | jtag_id | jtag_id_sup | tgt_read_w | tgt_read_m
                   | dump_buf_txt | xdump | bfill | buf |  memw_inc 
-                  | tgt_xfe | tgt_xfwm | sleep_ms |  reset;
+                  | tgt_xfe | tgt_xfem | tgt_xfwm | sleep_ms |  reset;
 
         main := ((literal | word ) space+ %reset_lit )* ;
         
