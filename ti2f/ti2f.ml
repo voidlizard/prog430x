@@ -6,6 +6,13 @@ let max_block = 256
 
 let (|>) f x = x f
 
+type erase_method = ERASE_MASS | ERASE_SGMT
+
+type opts = {
+    mutable erase : erase_method
+}
+
+
 let dump_data d = 
     List.iteri (fun i x -> printf "%04X%s" x (if ((i+1) mod 8) == 0 then "\n" else " ") ) d
 
@@ -22,32 +29,40 @@ let split_block { b_addr = a; b_data = d} =
              in  spl (bs @ [{ b with b_data = taken }]) { b_addr = b.b_addr + max_block*2; b_data = rest}
     in spl [] { b_addr = a; b_data = d}
 
-let dump_block_f block = 
+let dump_block_f opts block = 
     printf "reset\n" ;
     printf "buf\n" ;
     List.iteri (fun i x -> printf "$%04X !w+ %s" x (if (i+1) mod 8 == 0 then "\n" else " ") ) block.b_data ;
-    printf "\n$%04X !xfe\n" block.b_addr ; 
-    printf "%%wait_input 0.3\n" ;
+
+    begin
+    match opts.erase with 
+    | ERASE_SGMT ->
+        printf "\n\n$%04X !xfe\n" block.b_addr ; 
+        printf "%%wait_input 0.3\n\n"
+    | _ -> printf "\n\n"
+    end ;
+
     printf "$%04X $%04X !xfwm\n" block.b_addr (List.length block.b_data) ;
     printf "%%wait_input 0.4\n\n"
 
-let dump_header_f () = 
+let dump_header_f opts = 
     printf "0 echo\n";
     printf "1 led\n";
     printf "aquire\n";
-    printf "%%wait_input 0.2\n"
+    printf "%%wait_input 0.2\n" ;
+    if opts.erase == ERASE_MASS then printf "\n$5C00 !xfem\n%%wait_input 0.4\n\n"
 
-let dump_footer_f () =
+let dump_footer_f opts =
     printf "\n0 led\n";
     printf "release \n" ;
     printf "%%wait_input 2.0\n\n"
 
 let _ = 
-  let lex = Lexing.from_channel (Pervasives.stdin)
-  in let ti = Parser.toplevel Lexer.token lex
-  in let p  = List.map (fun x -> { x with b_data = pack x.b_data }) ti
-  in let pp = List.fold_left (fun acc a ->  acc @ split_block a ) [] p 
-  in dump_header_f () ; pp |> List.iter dump_block_f; dump_footer_f () 
-(*  in List.iter (fun {b_addr = addr; b_data = data} -> printf "@%04X\n" addr ; dump_data data  ) pp*)
-
+    let opts = { erase = ERASE_SGMT }
+    in let _ = Arg.parse [("--mass", Arg.Unit(fun () -> opts.erase <- ERASE_MASS ), "mass erase")] (fun x -> ()) "Usage:"
+    in let lex = Lexing.from_channel (Pervasives.stdin)
+    in let ti = Parser.toplevel Lexer.token lex
+    in let p  = List.map (fun x -> { x with b_data = pack x.b_data }) ti
+    in let pp = List.fold_left (fun acc a ->  acc @ split_block a ) [] p 
+    in dump_header_f opts ; pp |> List.iter (fun x -> dump_block_f opts x); dump_footer_f opts
 
