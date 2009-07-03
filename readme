@@ -2,7 +2,7 @@
 MSP430x5xx Programming software
 ===================================
 
-Autthor: Dmitry Zuikov <dzuikov@gmail.com>
+Author: Dmitry Zuikov <dzuikov@gmail.com>
 Version: 0.1a
 
 
@@ -176,6 +176,7 @@ bfill       ( a -- )       ; Fill the inner buffer with a pattern (byte)
 buf         ( -- a )       ; Get the inner buffer address 
 !w+         ( a b -- b+2)  ; Write a word at b addr, improve the addr by 2
 !xfe        ( a -- )       ; Erase the flash memory segment
+!xfem       ( a -- )       ; Mass erase (erase a whole bank at addr. a)
 !xfwm       ( a b -- )     ; Write flash memory at addr b, a words 
 
 Examples:
