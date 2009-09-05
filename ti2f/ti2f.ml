@@ -4,6 +4,8 @@ open ExtList
 
 let max_block = 256
 
+let flash2_bound = 0x10000
+
 let (|>) f x = x f
 
 type erase_method = ERASE_MASS | ERASE_SGMT
@@ -18,15 +20,19 @@ let dump_data d =
 
 let rec pack l = match l with
     | a :: b :: xs  -> ((b lsl 8) lor a) :: pack xs
-    | a :: []       -> failwith "Data alignment error"
+    | a :: []       -> failwith (sprintf "Data alignment error near %04X" a)
     | []            -> []
 
 let split_block { b_addr = a; b_data = d} =
-    let rec spl bs b = 
-        if List.length b.b_data <= max_block then bs @ [b]
-        else let     taken = List.take max_block b.b_data
-             in let  rest  = List.drop max_block b.b_data
-             in  spl (bs @ [{ b with b_data = taken }]) { b_addr = b.b_addr + max_block*2; b_data = rest}
+    let rec spl bs b =
+        let flash2_cross = if b.b_addr < flash2_bound && b.b_addr + (List.length b.b_data) >= flash2_bound 
+                           then true
+                           else false
+        in let block_size = if not flash2_cross then max_block else (min ((flash2_bound - b.b_addr) / 2) max_block)
+        in if not flash2_cross && List.length b.b_data <= block_size then bs @ [b]
+           else let     taken = List.take block_size b.b_data
+                in let  rest  = List.drop block_size b.b_data
+                in  spl (bs @ [{ b with b_data = taken }]) { b_addr = b.b_addr + block_size*2; b_data = rest}
     in spl [] { b_addr = a; b_data = d}
 
 let dump_block_f opts block = 
@@ -36,7 +42,8 @@ let dump_block_f opts block =
 
     begin
     match opts.erase with 
-    | ERASE_SGMT ->
+    | ERASE_SGMT 
+    | _ when block.b_addr >= flash2_bound ->
         printf "\n\n$%04X !xfe\n" block.b_addr ; 
         printf "%%wait_input 0.3\n\n"
     | _ -> printf "\n\n"
