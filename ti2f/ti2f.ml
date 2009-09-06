@@ -8,6 +8,8 @@ let flash2_bound = 0x10000
 
 let (|>) f x = x f
 
+exception Align_error of int
+
 type erase_method = ERASE_MASS | ERASE_SGMT
 
 type opts = {
@@ -20,7 +22,7 @@ let dump_data d =
 
 let rec pack l = match l with
     | a :: b :: xs  -> ((b lsl 8) lor a) :: pack xs
-    | a :: []       -> failwith (sprintf "Data alignment error near %04X" a)
+    | a :: []       -> raise (Align_error(a))
     | []            -> []
 
 let split_block { b_addr = a; b_data = d} =
@@ -69,7 +71,7 @@ let _ =
     in let _ = Arg.parse [("--mass", Arg.Unit(fun () -> opts.erase <- ERASE_MASS ), "mass erase")] (fun x -> ()) "Usage:"
     in let lex = Lexing.from_channel (Pervasives.stdin)
     in let ti = Parser.toplevel Lexer.token lex
-    in let p  = List.map (fun x -> { x with b_data = pack x.b_data }) ti
+    in let p  = List.map (fun x -> try { x with b_data = pack x.b_data } with Align_error(al) -> failwith (sprintf "Align error at %08x near %04x" x.b_addr al)) ti
     in let pp = List.fold_left (fun acc a ->  acc @ split_block a ) [] p 
     in dump_header_f opts ; pp |> List.iter (fun x -> dump_block_f opts x); dump_footer_f opts
 
