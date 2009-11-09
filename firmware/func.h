@@ -46,6 +46,7 @@ void target_write_flash(fet_world_t *world, dword addr, word len);
 void data_buf_fill(fet_world_t *world, byte val);
 void data_buf_dump_txt(fet_world_t *world, dword addr, word len);
 
+void uart_reset();
 
 dword data_buf(fet_world_t *world);
 

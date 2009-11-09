@@ -9,8 +9,10 @@ open Std
 let (|>) f x = x f
 
 exception Bye
+exception ThreadExit
 
-type events = EWaitAnyChar of float | EWaitAnswer of float | ETimeOfDay of float | EAnsw | ETimeout
+type events = EWaitAnyChar of float | EWaitAnswer of float 
+            | ETimeOfDay of float   | EAnsw | ETimeout | EAbortThread
 
 type opts  = {
                mutable opt_port     : string;
@@ -67,9 +69,10 @@ let port opts =
                  c_vtime = 5;
 	    } 
   in let _ = tcsetattr fd TCSAFLUSH ta';
+  in let _ = tcflush fd TCIOFLUSH
   in let ic = in_channel_of_descr fd
   in let oc = out_channel_of_descr fd
-  in (ic, oc)
+  in (ic, oc, fd)
 
 let run_script opts (inp,outp) script  =
     let flush () = Pervasives.flush outp
@@ -92,10 +95,14 @@ let run_script opts (inp,outp) script  =
 
     in let rec process_answ () = 
         let evt = Event.poll (Event.receive ch_a)
-        in let _ =  match evt with
-        | Some(EWaitAnswer(t)) -> answ_wait t
-        | _                    -> inp_wait ()
-        in process_answ ()
+        in try
+            let _ = 
+                match evt with
+                | Some(EWaitAnswer(t)) -> answ_wait t
+                | Some(EAbortThread)   -> raise ThreadExit
+                | _                    -> inp_wait ()
+            in process_answ ()
+        with ThreadExit -> ()
 
     in let send_char c = match c with
     | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.0003
@@ -132,10 +139,12 @@ let run_script opts (inp,outp) script  =
 
     in let t1 = Thread.create process_answ ()
     in let _  = play (List.of_enum script)
+    in let _  = Event.sync( Event.send ch_a (EAbortThread))
+    in let _  = Thread.join t1
     in ()
 
-let with_io (i,o) f = 
-    let close_all () = close_in i; close_out o 
+let with_io (i,o,fd) f = 
+    let close_all () = close fd
     in try f (); close_all ();
        with x -> close_all (); raise x
 
@@ -143,7 +152,7 @@ let _ =
     let opts = get_args ()
     in let _ = printf "Running %s %d %s\n\n" opts.opt_port opts.opt_baudrate opts.opt_script
     in try  
-        let (i,o) = port opts 
-        in with_io (i,o) (fun () -> run_script opts (i,o) (script opts))
+        let (i,o,f) = port opts 
+        in with_io (i,o,f) (fun () -> run_script opts (i,o) (script opts))
        with Bye -> print_endline "Bye!"
 

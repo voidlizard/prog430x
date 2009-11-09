@@ -120,7 +120,9 @@ void serial_interp(reader_t readf, world_t *world) {
         led          = 'led'     %led;
         
         reset        = 'reset'   %reset;
-        
+       
+        uart_reset   = 'uart-reset' %{ uart_reset(); };
+
         aquire       = 'aquire'  %aquire;
         release      = 'release' %release;
 
@@ -150,7 +152,7 @@ void serial_interp(reader_t readf, world_t *world) {
         word    = ping | dot_x | dot_c | drop | swap | echo | led
                   | aquire | release | jtag_id | jtag_id_sup | tgt_read_w | tgt_read_m
                   | dump_buf_txt | xdump | bfill | buf |  memw_inc 
-                  | tgt_xfe | tgt_xfem | tgt_xfwm | sleep_ms |  reset;
+                  | tgt_xfe | tgt_xfem | tgt_xfwm | sleep_ms |  reset | uart_reset;
 
         main := ((literal | word ) space+ %reset_lit )* ;
         

@@ -61,8 +61,12 @@ void init_hardware()
     init_timer();
     init_uarts();
 
-    P1DIR = 0x01;
-    P1OUT = 0;
+    P1OUT = 0x10;
+    P1DIR = 0x01|0x10;
+    
+/*    P1OUT |= 10;*/
+/*    P1DIR |= 0x10;*/
+/*    P1OUT |= 10;*/
 
     _EINT();
 }

@@ -169,6 +169,13 @@ void data_buf_fill(fet_world_t *world, byte val)
     memset(world->data, val, DATA_BUF_SIZE_WORDS*2);
 }
 
+void uart_reset() {
+    FTDI_OFF();
+    delay_ms(100);
+    FTDI_ON();
+    delay_ms(100);
+}
+
 void data_buf_dump_txt(fet_world_t *world, dword addr, word len)
 {
     word i = 0;

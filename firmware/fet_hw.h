@@ -38,6 +38,9 @@
 #define LED0_OFF()     {P1OUT &= ~0x01;}
 #define LED0_TOGGLE()  {P1OUT ^=  0x01;}
 
+#define FTDI_OFF()   P1OUT &= ~0x10;
+#define FTDI_ON()    P1OUT |= 0x10;
+
 void init_hardware();
 
 void enable_nmi();
