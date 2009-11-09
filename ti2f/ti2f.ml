@@ -47,19 +47,19 @@ let dump_block_f opts block =
     | ERASE_SGMT 
     | _ when block.b_addr >= flash2_bound ->
         printf "\n\n$%04X !xfe\n" block.b_addr ; 
-        printf "%%wait_input 0.3\n\n"
+        printf "%%wait_input 0.8\n\n"
     | _ -> printf "\n\n"
     end ;
 
     printf "$%04X $%04X !xfwm\n" block.b_addr (List.length block.b_data) ;
-    printf "%%wait_input 0.4\n\n"
+    printf "%%wait_input 0.5\n\n"
 
 let dump_header_f opts = 
     printf "0 echo\n";
     printf "1 led\n";
     printf "aquire\n";
     printf "%%wait_input 0.2\n" ;
-    if opts.erase == ERASE_MASS then printf "\n$5C00 !xfem\n%%wait_input 0.4\n\n"
+    if opts.erase == ERASE_MASS then printf "\n$5C00 !xfem\n%%wait 0.8\n\n"
 
 let dump_footer_f opts =
     printf "\n0 led\n";

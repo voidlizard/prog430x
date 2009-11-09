@@ -113,11 +113,11 @@ let run_script opts (inp,outp) script  =
         | _       -> (); (*printf "Got timeout in %f\n" ( Unix.gettimeofday() -. t1)*)
 
     in let rec cmd_parser = parser 
-        | [< 'Kwd "wait_input"; 'Float f; >] -> wait_input f
-        | [< 'Kwd "wait"; 'Float f; >]       -> wait f
-        | [< 'Kwd "timeofday";  >]           -> ()
-        | [< 'Kwd "bye"; >]                  -> raise Bye 
-        | [<>]                               -> ()
+        | [< 'Kwd "wait_input"; 'Float f >] -> wait_input f
+        | [< 'Kwd "wait"; 'Float f >]       -> wait f
+        | [< 'Kwd "timeofday"  >]           -> ()
+        | [< 'Kwd "bye" >]                  -> raise Bye 
+        | [<>]                              -> ()
 
     in let exec_cmd cmd =
         cmd |> Stream.of_string |> cmd_lexer |> cmd_parser
@@ -134,9 +134,16 @@ let run_script opts (inp,outp) script  =
     in let _  = play (List.of_enum script)
     in ()
 
+let with_io (i,o) f = 
+    let close_all () = close_in i; close_out o 
+    in try f (); close_all ();
+       with x -> close_all (); raise x
+
 let _ = 
     let opts = get_args ()
     in let _ = printf "Running %s %d %s\n\n" opts.opt_port opts.opt_baudrate opts.opt_script
-    in try  run_script opts (port opts) (script opts)
+    in try  
+        let (i,o) = port opts 
+        in with_io (i,o) (fun () -> run_script opts (i,o) (script opts))
        with Bye -> print_endline "Bye!"
 
