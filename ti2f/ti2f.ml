@@ -42,14 +42,17 @@ let dump_block_f opts block =
     printf "buf\n" ;
     List.iteri (fun i x -> printf "$%04X !w+ %s" x (if (i+1) mod 8 == 0 then "\n" else " ") ) block.b_data ;
 
-    begin
-    match opts.erase with 
-    | ERASE_SGMT 
-    | _ when block.b_addr >= flash2_bound ->
+    if opts.erase == ERASE_SGMT || block.b_addr >= flash2_bound
+    then
+        begin
         printf "\n\n$%04X !xfe\n" block.b_addr ; 
         printf "%%wait_input 0.8\n\n"
-    | _ -> printf "\n\n"
-    end ;
+        end
+    else
+        begin
+        printf "\n\n" ;
+        end
+    ;
 
     printf "$%04X $%04X !xfwm\n" block.b_addr (List.length block.b_data) ;
     printf "%%wait_input 0.5\n\n"
