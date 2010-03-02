@@ -24,7 +24,9 @@ type opts  = {
 
 type processing_opts = {
     proc_echo : bool;
-    proc_filt:  (Pervasives.in_channel * Pervasives.out_channel) option
+    proc_filt: int option;
+    proc_filt_in: Pervasives.out_channel option;
+    proc_filt_out: Pervasives.in_channel option;
 }
 
 
@@ -90,15 +92,12 @@ let run_script opts (inp,outp) script  =
     in let ch_b = Event.new_channel ()
     
     in let dump_out opts c =
-        let oc = match opts.proc_filt with Some(i,o) -> o | None -> Pervasives.stdout
-        in Enum.iter (fun x -> if opts.proc_echo then (Pervasives.output_char oc x; fl Pervasives.stdout )
-                                                 else () ) (input_chars c)
+         Enum.iter (fun x -> (printf "%c" x; fl Pervasives.stdout ) ) (input_chars c)
 
     in let answ_wait opts t = 
-        let fl = match opts.proc_filt with Some(i,o) -> (descr_of_in_channel i)::[] | _ -> []
-        in match Thread.select [in_fd;] fl [] t with
-                | (x::_,_,_) -> Event.sync( (Event.send ch_b EAnsw) ); dump_out opts (in_channel_of_descr x)
-                | _          -> Event.sync( (Event.send ch_b ETimeout) )
+        match Thread.select [in_fd;] [] [] t with
+              | (x::_,_,_) -> Event.sync( (Event.send ch_b EAnsw) ); dump_out opts (in_channel_of_descr x)
+              | _          -> Event.sync( (Event.send ch_b ETimeout) )
 
     in let inp_wait opts () =
         match Thread.select [in_fd] [] [] 0.0001 with
@@ -117,11 +116,11 @@ let run_script opts (inp,outp) script  =
                 | Some(ESetEcho(false)) -> process_answ { opts with proc_echo = false }
                 | Some(ESetEcho(true))  -> process_answ { opts with proc_echo = true  }
                 | Some(EPrintString(s)) -> printf "%s" s; fl Pervasives.stdout
-                | Some(ERunFilter(p))   -> process_answ { opts with proc_filt = Some(spawn_filter p)}
+                | Some(ERunFilter(p))   -> printf "RUN FILTER!" 
                 | _                     -> inp_wait opts ()
             in process_answ opts
-        with _ -> match opts.proc_filt with Some(p) -> let _ = Unix.close_process p in ()
-                                          | None  -> ()
+        with _ -> match opts.proc_filt with Some(pid) -> Unix.kill pid 15 
+                                          | None      -> ()
 
     in let send_char c = match c with
     | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.0003
@@ -169,7 +168,7 @@ let run_script opts (inp,outp) script  =
         | x :: xs   -> send_char x ; play xs
         | []        -> ()
 
-    in let default_opts = { proc_echo = true; proc_filt = None }
+    in let default_opts = { proc_echo = true; proc_filt = None; proc_filt_in = None; proc_filt_out = None }
     in let t1 = Thread.create (fun () -> process_answ default_opts) ()
     in let _  = play (List.of_enum script)
     in let _  = Event.sync( Event.send ch_a (EAbortThread))
