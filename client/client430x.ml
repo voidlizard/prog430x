@@ -13,12 +13,20 @@ exception ThreadExit
 
 type events = EWaitAnyChar of float | EWaitAnswer of float 
             | ETimeOfDay of float   | EAnsw | ETimeout | EAbortThread
+            | ESetEcho of bool | EPrintString of string
+            | ERunFilter of string
 
 type opts  = {
                mutable opt_port     : string;
                mutable opt_baudrate : int;
                mutable opt_script   : string 
              }
+
+type processing_opts = {
+    proc_echo : bool;
+    proc_filt:  (Pervasives.in_channel * Pervasives.out_channel) option
+}
+
 
 let fl = Pervasives.flush
 
@@ -81,34 +89,45 @@ let run_script opts (inp,outp) script  =
     in let ch_a = Event.new_channel ()
     in let ch_b = Event.new_channel ()
     
-    in let dump_out c = Enum.iter (fun x -> printf "%c" x; fl Pervasives.stdout) (input_chars c)
+    in let dump_out opts c =
+        let oc = match opts.proc_filt with Some(i,o) -> o | None -> Pervasives.stdout
+        in Enum.iter (fun x -> if opts.proc_echo then (Pervasives.output_char oc x; fl Pervasives.stdout )
+                                                 else () ) (input_chars c)
 
-    in let answ_wait t = 
-        match Thread.select [in_fd;] [] [] t with
-                | (x::_,_,_) -> Event.sync( (Event.send ch_b EAnsw) ); dump_out (in_channel_of_descr x)
+    in let answ_wait opts t = 
+        let fl = match opts.proc_filt with Some(i,o) -> (descr_of_in_channel i)::[] | _ -> []
+        in match Thread.select [in_fd;] fl [] t with
+                | (x::_,_,_) -> Event.sync( (Event.send ch_b EAnsw) ); dump_out opts (in_channel_of_descr x)
                 | _          -> Event.sync( (Event.send ch_b ETimeout) )
 
-    in let inp_wait () = 
-        match Thread.select [in_fd;] [] [] 0.0001 with
-        | (x::_,_,_) -> dump_out (in_channel_of_descr x)
-        | _          -> ()
+    in let inp_wait opts () =
+        match Thread.select [in_fd] [] [] 0.0001 with
+        | (x::_,_,_) -> dump_out opts (in_channel_of_descr x)
+        | _         -> ()
 
-    in let rec process_answ () = 
+    in let spawn_filter p = Unix.open_process p
+
+    in let rec process_answ opts = 
         let evt = Event.poll (Event.receive ch_a)
         in try
             let _ = 
                 match evt with
-                | Some(EWaitAnswer(t)) -> answ_wait t
-                | Some(EAbortThread)   -> raise ThreadExit
-                | _                    -> inp_wait ()
-            in process_answ ()
-        with ThreadExit -> ()
+                | Some(EWaitAnswer(t))  -> answ_wait opts t
+                | Some(EAbortThread)    -> raise ThreadExit
+                | Some(ESetEcho(false)) -> process_answ { opts with proc_echo = false }
+                | Some(ESetEcho(true))  -> process_answ { opts with proc_echo = true  }
+                | Some(EPrintString(s)) -> printf "%s" s; fl Pervasives.stdout
+                | Some(ERunFilter(p))   -> process_answ { opts with proc_filt = Some(spawn_filter p)}
+                | _                     -> inp_wait opts ()
+            in process_answ opts
+        with _ -> match opts.proc_filt with Some(p) -> let _ = Unix.close_process p in ()
+                                          | None  -> ()
 
     in let send_char c = match c with
     | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.0003
     | x                        -> output_char outp x;
 
-    in let cmd_lexer = make_lexer ["wait_input";"wait";"timeofday";"bye"]
+    in let cmd_lexer = make_lexer ["wait_input";"wait";"timeofday";"bye";"echo"; "print";"run_filter"]
 
     in let wait f = Thread.delay f
 
@@ -119,12 +138,25 @@ let run_script opts (inp,outp) script  =
         | EAnsw   -> (); (*printf "Got  answ in %f\n" ( Unix.gettimeofday() -. t1)*)
         | _       -> (); (*printf "Got timeout in %f\n" ( Unix.gettimeofday() -. t1)*)
 
+    in let set_echo echo = 
+        if echo == 0 then Event.sync( Event.send ch_a (ESetEcho(false)) )
+        else              Event.sync( Event.send ch_a (ESetEcho(true)) )
+
+    in let out_string s = Event.sync( Event.send ch_a (EPrintString(s)) )
+
+    in let run_filter path = Event.sync( Event.send ch_a (ERunFilter(path)) )
+
+    in let terminate () = Event.sync( Event.send ch_a EAbortThread )
+
     in let rec cmd_parser = parser 
-        | [< 'Kwd "wait_input"; 'Float f >] -> wait_input f
-        | [< 'Kwd "wait"; 'Float f >]       -> wait f
-        | [< 'Kwd "timeofday"  >]           -> ()
-        | [< 'Kwd "bye" >]                  -> raise Bye 
-        | [<>]                              -> ()
+        | [< 'Kwd "wait_input"; 'Float f >]    -> wait_input f
+        | [< 'Kwd "wait"; 'Float f >]          -> wait f
+        | [< 'Kwd "timeofday"  >]              -> ()
+        | [< 'Kwd "echo";  'Int v  >]          -> set_echo v 
+        | [< 'Kwd "print"; 'String v  >]       -> out_string v 
+        | [< 'Kwd "run_filter"; 'String v  >]  -> run_filter v
+        | [< 'Kwd "bye" >]                     -> terminate (); raise Bye 
+        | [<>]                                 -> ()
 
     in let exec_cmd cmd =
         cmd |> Stream.of_string |> cmd_lexer |> cmd_parser
@@ -137,7 +169,8 @@ let run_script opts (inp,outp) script  =
         | x :: xs   -> send_char x ; play xs
         | []        -> ()
 
-    in let t1 = Thread.create process_answ ()
+    in let default_opts = { proc_echo = true; proc_filt = None }
+    in let t1 = Thread.create (fun () -> process_answ default_opts) ()
     in let _  = play (List.of_enum script)
     in let _  = Event.sync( Event.send ch_a (EAbortThread))
     in let _  = Thread.join t1
