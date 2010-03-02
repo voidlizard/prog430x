@@ -14,7 +14,7 @@ exception ThreadExit
 type events = EWaitAnyChar of float | EWaitAnswer of float 
             | ETimeOfDay of float   | EAnsw | ETimeout | EAbortThread
             | ESetEcho of bool | EPrintString of string
-            | ERunFilter of string
+            | ERunFilter of string | EKillFilter of int
 
 type opts  = {
                mutable opt_port     : string;
@@ -90,9 +90,23 @@ let run_script opts (inp,outp) script  =
 
     in let ch_a = Event.new_channel ()
     in let ch_b = Event.new_channel ()
-    
+
+    in let write_string opts s =
+        if opts.proc_echo then 
+        let channel = 
+            match opts.proc_filt_in with 
+            | Some(c) -> c
+            | None    -> Pervasives.stdout
+        in Pervasives.output_string channel s; fl channel
+        else ()
+
     in let dump_out opts c =
-         Enum.iter (fun x -> (printf "%c" x; fl Pervasives.stdout ) ) (input_chars c)
+        if opts.proc_echo then 
+        let channel = 
+            match opts.proc_filt_in with 
+            | Some(c) -> c
+            | None    -> Pervasives.stdout
+        in Enum.iter (fun x -> (Pervasives.output_char channel x; fl channel) ) (input_chars c)
 
     in let answ_wait opts t = 
         match Thread.select [in_fd;] [] [] t with
@@ -104,7 +118,19 @@ let run_script opts (inp,outp) script  =
         | (x::_,_,_) -> dump_out opts (in_channel_of_descr x)
         | _         -> ()
 
-    in let spawn_filter p = Unix.open_process p
+    in let kill_filt opts s =
+        let _ = match opts.proc_filt with 
+                | Some(pid) -> Unix.kill pid s
+                | None    -> ()
+        in { opts with proc_filt = None; proc_filt_in = None; proc_filt_out = None }
+
+    in let spawn_filter opts p =
+        let _ = kill_filt opts 
+        in let fin, fout = Unix.pipe ()
+        in let c_in, c_out = (in_channel_of_descr fin, out_channel_of_descr fout)
+        in let pid = Unix.create_process p [||] fin (descr_of_out_channel Pervasives.stdout)
+                                                    (descr_of_out_channel Pervasives.stderr)
+        in { opts with proc_filt = Some(pid); proc_filt_in = Some(c_out); proc_filt_out = Some(c_in) }
 
     in let rec process_answ opts = 
         let evt = Event.poll (Event.receive ch_a)
@@ -115,8 +141,9 @@ let run_script opts (inp,outp) script  =
                 | Some(EAbortThread)    -> raise ThreadExit
                 | Some(ESetEcho(false)) -> process_answ { opts with proc_echo = false }
                 | Some(ESetEcho(true))  -> process_answ { opts with proc_echo = true  }
-                | Some(EPrintString(s)) -> printf "%s" s; fl Pervasives.stdout
-                | Some(ERunFilter(p))   -> printf "RUN FILTER!" 
+                | Some(EPrintString(s)) -> write_string opts s
+                | Some(ERunFilter(p))   -> process_answ (spawn_filter opts p)
+                | Some(EKillFilter(s))  -> process_answ (kill_filt opts s)
                 | _                     -> inp_wait opts ()
             in process_answ opts
         with _ -> match opts.proc_filt with Some(pid) -> Unix.kill pid 15 
@@ -126,7 +153,7 @@ let run_script opts (inp,outp) script  =
     | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.0003
     | x                        -> output_char outp x;
 
-    in let cmd_lexer = make_lexer ["wait_input";"wait";"timeofday";"bye";"echo"; "print";"run_filter"]
+    in let cmd_lexer = make_lexer ["wait_input";"wait";"timeofday";"bye";"echo"; "print";"run_filter"; "kill_filter"]
 
     in let wait f = Thread.delay f
 
@@ -145,6 +172,8 @@ let run_script opts (inp,outp) script  =
 
     in let run_filter path = Event.sync( Event.send ch_a (ERunFilter(path)) )
 
+    in let kill_filter signal  = Event.sync(Event.send ch_a (EKillFilter(signal)))
+
     in let terminate () = Event.sync( Event.send ch_a EAbortThread )
 
     in let rec cmd_parser = parser 
@@ -154,6 +183,7 @@ let run_script opts (inp,outp) script  =
         | [< 'Kwd "echo";  'Int v  >]          -> set_echo v 
         | [< 'Kwd "print"; 'String v  >]       -> out_string v 
         | [< 'Kwd "run_filter"; 'String v  >]  -> run_filter v
+        | [< 'Kwd "kill_filter"; 'Int sg  >]   -> kill_filter sg 
         | [< 'Kwd "bye" >]                     -> terminate (); raise Bye 
         | [<>]                                 -> ()
 
