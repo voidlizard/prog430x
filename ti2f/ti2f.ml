@@ -13,7 +13,12 @@ exception Align_error of int
 type erase_method = ERASE_MASS | ERASE_SGMT
 
 type opts = {
-    mutable erase : erase_method
+    mutable erase   : erase_method ;
+    mutable verbose : bool
+}
+
+type fw_params = {
+    data_size: int
 }
 
 
@@ -55,9 +60,12 @@ let dump_block_f opts block =
     ;
 
     printf "$%04X $%04X !xfwm\n" block.b_addr (List.length block.b_data) ;
-    printf "%%wait_input 0.5\n\n"
+    printf "%%wait_input 0.5\n" ;
+    if opts.verbose then printf "%%print \"bytes written: %d\"\n" ((List.length block.b_data)*2);
+    printf "\n"
 
-let dump_header_f opts = 
+let dump_header_f opts fw = 
+    if opts.verbose then printf "%%print  \"bytes total: %d\"\n" fw.data_size;
     printf "0 echo\n";
     printf "1 led\n";
     printf "aquire\n";
@@ -70,11 +78,14 @@ let dump_footer_f opts =
     printf "%%wait_input 2.0\n\n"
 
 let _ = 
-    let opts = { erase = ERASE_SGMT }
-    in let _ = Arg.parse [("--mass", Arg.Unit(fun () -> opts.erase <- ERASE_MASS ), "mass erase")] (fun x -> ()) "Usage:"
+    let opts = { erase = ERASE_SGMT; verbose = true }
+    in let _ = Arg.parse [("--mass",  Arg.Unit(fun () -> opts.erase   <- ERASE_MASS ), "mass erase");
+                          ("--quiet", Arg.Unit(fun () -> opts.verbose <-false), "reduce verbosity")] (fun x -> ()) "Usage:"
     in let lex = Lexing.from_channel (Pervasives.stdin)
     in let ti = Parser.toplevel Lexer.token lex
+    in let len = List.fold_left (fun acc x -> acc + (List.length x.b_data)) 0 ti
+    in let fw = { data_size = len }
     in let p  = List.map (fun x -> try { x with b_data = pack x.b_data } with Align_error(al) -> failwith (sprintf "Align error at %08x near %04x" x.b_addr al)) ti
     in let pp = List.fold_left (fun acc a ->  acc @ split_block a ) [] p 
-    in dump_header_f opts ; pp |> List.iter (fun x -> dump_block_f opts x); dump_footer_f opts
+    in dump_header_f opts fw ; pp |> List.iter (fun x -> dump_block_f opts x); dump_footer_f opts
 
