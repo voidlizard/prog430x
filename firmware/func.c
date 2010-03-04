@@ -203,13 +203,14 @@ void data_buf_dump_txt(fet_world_t *world, dword addr, word len)
 
 void readbytes(fet_world_t *world, word offset, word len) {
 
-/*    char *datap = (char*)(world->data+offset);*/
-/*    char *datae = (char*)(world->data+offset);*/
+    char *data   = (char*)world->data; 
+    char *dataee = data  + (DATA_BUF_SIZE_WORDS*2);
+    char *datap  = data  + offset; 
+    char *datae  = datap + len;
 
-/*    if(datae >= (char*)((world->data+DATA_BUF_SIZE_WORDS)))*/
-/*        return;*/
+    datae = datae < dataee ? datae : dataee;
 
-/*    while( datap < datae ) *datap++ = getchar();*/
+    while( datap < datae ) *datap++ = getchar();
 }
 
 
