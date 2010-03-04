@@ -150,7 +150,7 @@ let run_script opts (inp,outp) script  =
                                           | None      -> ()
 
     in let send_char c = match c with
-    | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.0003
+    | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); (*Thread.delay 0.0001*)
     | x                        -> output_char outp x;
 
     in let cmd_lexer = make_lexer ["wait_input";"wait";"timeofday";"bye";"echo"; "print";"run_filter"; "kill_filter"]

@@ -63,7 +63,14 @@ void init_hardware()
 
     P1OUT = 0x10;
     P1DIR = 0x01|0x10;
-    
+
+#ifndef GOODFET
+
+    VJTAGDIR |= VJTAG;
+    VJTAGOUT |= VJTAG;
+
+#endif
+
 /*    P1OUT |= 10;*/
 /*    P1DIR |= 0x10;*/
 /*    P1OUT |= 10;*/

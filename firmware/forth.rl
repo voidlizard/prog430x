@@ -107,7 +107,9 @@ void serial_interp(reader_t readf, world_t *world) {
 
         action tgt_xfem     { spop(astack, tmp); target_erase_flash_mass(world, tmp); }
 
-        action tgt_xfwm     { spop(astack, tmp); spop(astack, ttmp); target_write_flash(world, ttmp, tmp); }  
+        action tgt_xfwm     { spop(astack, tmp); spop(astack, ttmp); target_write_flash(world, ttmp, tmp); }
+
+        action readbytes    { /* (off size -- ) */ spop(astack, tmp); spop(astack, ttmp); readbytes(world, ttmp, tmp); }
 
         ping         = 'ping'    %{log("pong");};
         sleep_ms     = 'sleep_ms' %{ spop(astack, tmp);  delay_ms(tmp); log("target_ready"); };
@@ -122,6 +124,8 @@ void serial_interp(reader_t readf, world_t *world) {
         reset        = 'reset'   %reset;
        
         uart_reset   = 'uart-reset' %{ uart_reset(); };
+
+        readbytes    = 'readbytes' %readbytes;
 
         aquire       = 'aquire'  %aquire;
         release      = 'release' %release;
@@ -152,7 +156,8 @@ void serial_interp(reader_t readf, world_t *world) {
         word    = ping | dot_x | dot_c | drop | swap | echo | led
                   | aquire | release | jtag_id | jtag_id_sup | tgt_read_w | tgt_read_m
                   | dump_buf_txt | xdump | bfill | buf |  memw_inc 
-                  | tgt_xfe | tgt_xfem | tgt_xfwm | sleep_ms |  reset | uart_reset;
+                  | tgt_xfe | tgt_xfem | tgt_xfwm | sleep_ms |  reset | uart_reset
+                  | readbytes;
 
         main := ((literal | word ) space+ %reset_lit )* ;
         

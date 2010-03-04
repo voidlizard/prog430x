@@ -48,6 +48,9 @@ void data_buf_dump_txt(fet_world_t *world, dword addr, word len);
 
 void uart_reset();
 
+void readbytes(fet_world_t *world, word offset, word len); 
+
+
 dword data_buf(fet_world_t *world);
 
 #endif

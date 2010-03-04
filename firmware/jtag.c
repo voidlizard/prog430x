@@ -7,6 +7,13 @@ void init_target()
     JTAGOUT  = 0x00;
     JTAGDIR  = 0;
 
+#ifndef GOODFET
+
+    VJTAGDIR |= VJTAG;
+    VJTAGOUT |= VJTAG;
+
+#endif
+
 /*    RSTDIR  |= RST_BIT;*/
 /*    RSTOUT   = 0;*/
 
@@ -14,32 +21,35 @@ void init_target()
 
     TSTOUT  |= TST_BIT;
     RSTOUT  |= RST_BIT;
+    
+    TST_SET();
+    RST_SET();
+    
     TSTDIR  |= TST_BIT;
     RSTDIR  |= RST_BIT;
 
-    TSTOUT   = 0;
+    TST_CLR();
 
     delay_ms(10);
 
-    TSTOUT |=  TST_BIT;
+    TST_SET();
 
     delay_us(100);
 
-    RSTOUT  =  0;
+    RST_CLR();
 
     delay_us(100);
-    RSTDIR  |= RST_BIT;
-    RSTOUT   = 0;
+
+    RST_CLR();
 
     delay_ms(5);
 
-    TSTOUT = 0;
-    TSTOUT |= TST_BIT;
+    TST_CLR();
+    TST_SET();
 
     delay_ms(3);
 
-    RSTOUT |= RST_BIT;
-
+    RST_SET();
 }
 
 void release_target()
@@ -47,7 +57,5 @@ void release_target()
     JTAGDIR  =  0x00;        // VCC is off, all I/Os are HI-Z
     delay_ms(50);
 }
-
-
 
 
