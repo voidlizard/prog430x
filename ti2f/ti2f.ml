@@ -74,9 +74,9 @@ let dump_block_f opts block =
         end
     ;
 
+    if opts.verbose then printf "\n%%print \"bytes written: %d\\n\"\n" ((List.length block.b_data)*2);
     printf "$%04X $%04X !xfwm\n" block.b_addr (List.length block.b_data) ;
     printf "%%wait_input 0.5\n" ;
-    if opts.verbose then printf "\n%%print \"bytes written: %d\\n\"\n" ((List.length block.b_data)*2);
 
     printf "\n"
 

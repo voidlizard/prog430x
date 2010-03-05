@@ -150,7 +150,7 @@ let run_script opts (inp,outp) script  =
                                           | None      -> ()
 
     in let send_char c = match c with
-    | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); (*Thread.delay 0.0001*)
+    | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); Thread.delay 0.0001
     | x                        -> output_char outp x;
 
     in let send_string s = output_string outp s; flush()
@@ -188,7 +188,7 @@ let run_script opts (inp,outp) script  =
         | [< 'Kwd "print"; 'String v  >]       -> out_string v 
         | [< 'Kwd "run_filter"; 'String v  >]  -> run_filter v
         | [< 'Kwd "kill_filter"; 'Int sg  >]   -> kill_filter sg 
-        | [< 'Kwd "sendstr"; 'String s  >]     -> () (*send_string s *)
+        | [< 'Kwd "sendstr"; 'String s  >]     -> send_string s
         | [< 'Kwd "bye" >]                     -> terminate (); raise Bye 
         | [<>]                                 -> ()
 
