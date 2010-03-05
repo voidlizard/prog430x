@@ -116,6 +116,15 @@ void target_release(fet_world_t *world)
     log("target_release ok");
 }
 
+void target_power(fet_world_t *world, word status) {
+    if(status) {
+        VJTAG_SET();
+    } else {
+        VJTAG_CLR();
+    }
+}
+
+
 word target_read_word(fet_world_t *world, dword addr)
 {
     word tmp = 0;
@@ -145,8 +154,9 @@ void target_erase_flash_mass(fet_world_t *world, dword addr)
 
 void target_write_flash(fet_world_t *world, dword addr, word len)
 {
-    WriteFLASH_430Xv2_wo_release(addr, len, world->data);
-    log("target_ready");
+/*    WriteFLASH_430Xv2_wo_release(addr, len, world->data);*/
+/*    putchar('@');*/
+/*    log("@");*/
 }
 
 void target_jtag_id_support(fet_world_t *world, word id)
@@ -200,6 +210,7 @@ void data_buf_dump_txt(fet_world_t *world, dword addr, word len)
     printf("\r\n");
 }
 
+extern volatile uint32_t __ticks_ms;
 
 void readbytes(fet_world_t *world, word offset, word len) {
 
@@ -208,9 +219,16 @@ void readbytes(fet_world_t *world, word offset, word len) {
     char *datap  = data  + offset; 
     char *datae  = datap + len;
 
+    uint32_t t1 = __ticks_ms;
+
     datae = datae < dataee ? datae : dataee;
 
+   
     while( datap < datae ) *datap++ = getchar();
+    
+    printf("block read: %d ms\r\n", (uint16_t)(__ticks_ms - t1) );
+   
+    putchar('@');
 }
 
 

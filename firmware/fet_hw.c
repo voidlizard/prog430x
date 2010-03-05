@@ -8,6 +8,13 @@ static void init_uarts();
 
 RINGBUFFER_NEW(ringbuffer, 512);
 
+#define USART0_TX_BUFFER_SIZE 64 
+
+static volatile uint16_t uart_tx_busy = 0;
+static volatile int  txwrite = 0;
+static volatile int  txread  = 0;
+static volatile char txbuf[USART0_TX_BUFFER_SIZE];
+
 volatile uint32_t __ticks_ms = 0;
 
 static void __init_UART0(void);
@@ -106,6 +113,24 @@ interrupt (UART0RX_VECTOR) wakeup uart0_rx_isr( void )
 
 interrupt (UART0TX_VECTOR) wakeup uart0_tx_isr( void )
 {
+    if (txwrite != txread )
+    {
+        TXBUF0 = txbuf[txread++];
+        txread %= USART0_TX_BUFFER_SIZE;
+    }
+    else
+    {
+        uart_tx_busy = 0;
+    }
+
+/*    char character = 0;*/
+/*    if (ringbuffer_len(&ringbuffer_tx)) {*/
+/*        TXBUF0 = character;*/
+/*        LED0_ON();*/
+/*    } else {*/
+/*        uart_tx_busy = 0;*/
+/*        LED0_OFF();*/
+/*    }*/
 }
 
 interrupt (NMI_VECTOR) wakeup nmi_isr (void)
@@ -138,8 +163,42 @@ void delay_us(word microeconds)
 }
 
 int putchar(int character) {
-    while (!(UTCTL0 & TXEPT)) {}                // wait util tx buffer is free
-    TXBUF0 = character;                         // send character
+  
+    uint16_t temp;
+
+    temp = (txwrite + 1) % USART0_TX_BUFFER_SIZE;
+
+    if (temp == txread)
+        return -1;                          // no room
+
+    U0IE &= ~UTXIE0 ;                     // disable TX interrupts
+
+    // check if in process of sending data
+    if (uart_tx_busy)
+    {
+        // add to queue
+        txbuf[txwrite] = (char)character;
+        txwrite = temp;
+    }
+    else
+    {
+        // set running flag and write to output register
+        uart_tx_busy = 1;
+        TXBUF0 = character;
+    }
+
+    U0IE |= UTXIE0;                       // enable TX interrupts
+
+/*    IE1 &= ~UTXIE0; */
+/*    if( !uart_tx_busy ) {*/
+/*        TXBUF0 = character;*/
+/*        uart_tx_busy = 1;*/
+/*    }*/
+/*    else {*/
+/*        ringbuffer_put(&ringbuffer_tx, character);*/
+/*    }*/
+/*    IE1 |= UTXIE0; */
+
     return 1;
 }
 

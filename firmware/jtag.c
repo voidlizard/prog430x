@@ -8,10 +8,8 @@ void init_target()
     JTAGDIR  = 0;
 
 #ifndef GOODFET
-
     VJTAGDIR |= VJTAG;
     VJTAGOUT |= VJTAG;
-
 #endif
 
 /*    RSTDIR  |= RST_BIT;*/

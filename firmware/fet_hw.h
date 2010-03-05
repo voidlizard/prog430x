@@ -77,6 +77,9 @@
 #define TST_SET()  TSTOUT |=  TST_BIT;
 #define TST_CLR()  TSTOUT &= ~TST_BIT;
 
+#define VJTAG_SET() VJTAGOUT |=  VJTAG;
+#define VJTAG_CLR() VJTAGOUT &= ~VJTAG;
+
 #define BITRATE_HI(X) ((uint16_t)((CPU_FREQ/(X))) >> 8)
 #define BITRATE_LO(X) ((uint16_t)((CPU_FREQ/(X))) &0xFF)
 

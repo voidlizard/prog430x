@@ -57,7 +57,7 @@ int main(void)
  
     wait_bsl();
 
-    LED0_ON();
+    LED0_OFF();
 
     enable_nmi();
 

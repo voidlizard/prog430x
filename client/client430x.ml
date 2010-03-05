@@ -153,7 +153,11 @@ let run_script opts (inp,outp) script  =
     | '\r' | '\n' | '\t' | ' ' -> output_char outp c; flush(); (*Thread.delay 0.0001*)
     | x                        -> output_char outp x;
 
-    in let cmd_lexer = make_lexer ["wait_input";"wait";"timeofday";"bye";"echo"; "print";"run_filter"; "kill_filter"]
+    in let send_string s = output_string outp s; flush()
+
+    in let cmd_lexer = make_lexer ["wait_input";"wait";"timeofday";"bye";
+                                   "echo"; "print";"run_filter";"kill_filter";
+                                   "sendstr"]
 
     in let wait f = Thread.delay f
 
@@ -184,6 +188,7 @@ let run_script opts (inp,outp) script  =
         | [< 'Kwd "print"; 'String v  >]       -> out_string v 
         | [< 'Kwd "run_filter"; 'String v  >]  -> run_filter v
         | [< 'Kwd "kill_filter"; 'Int sg  >]   -> kill_filter sg 
+        | [< 'Kwd "sendstr"; 'String s  >]     -> () (*send_string s *)
         | [< 'Kwd "bye" >]                     -> terminate (); raise Bye 
         | [<>]                                 -> ()
 

@@ -1,6 +1,7 @@
 open Ti_txt
 open Printf
 open ExtList
+open ExtString
 
 let max_block = 256
 
@@ -42,10 +43,24 @@ let split_block { b_addr = a; b_data = d} =
                 in  spl (bs @ [{ b with b_data = taken }]) { b_addr = b.b_addr + block_size*2; b_data = rest}
     in spl [] { b_addr = a; b_data = d}
 
+
+let rec strings_of_data strings (data:int list) = 
+    let fmt chars =
+        List.map (fun x ->sprintf "\\%03d\\%03d" (x land 0xFF) ((x land 0xFFFF) lsr 8) ) chars |> String.join ""
+
+    in match List.length data with
+    | 0                 -> strings
+    | x when x < 8      -> strings @ [fmt data]
+    | x                 -> strings_of_data (strings @ [fmt (List.take 8 data)]) (List.drop 8 data)
+
 let dump_block_f opts block = 
-    printf "reset\n" ;
-    printf "buf\n" ;
-    List.iteri (fun i x -> printf "$%04X !w+ %s" x (if (i+1) mod 8 == 0 then "\n" else " ") ) block.b_data ;
+(*    printf "reset\n" ;*)
+(*    printf "buf\n" ;*)
+    printf "%d %d readbytes\n" 0 ((List.length block.b_data)*2) ;
+
+    List.iter (fun s -> printf "%%sendstr \"%s\"\n" s ) (strings_of_data [] block.b_data) ;
+
+(*    List.iteri (fun i x -> printf "$%04X !w+ %s" x (if (i+1) mod 8 == 0 then "\n" else " ") ) block.b_data ;*)
 
     if opts.erase == ERASE_SGMT || block.b_addr >= flash2_bound
     then
@@ -61,11 +76,12 @@ let dump_block_f opts block =
 
     printf "$%04X $%04X !xfwm\n" block.b_addr (List.length block.b_data) ;
     printf "%%wait_input 0.5\n" ;
-    if opts.verbose then printf "%%print \"bytes written: %d\"\n" ((List.length block.b_data)*2);
+    if opts.verbose then printf "\n%%print \"bytes written: %d\\n\"\n" ((List.length block.b_data)*2);
+
     printf "\n"
 
 let dump_header_f opts fw = 
-    if opts.verbose then printf "%%print  \"bytes total: %d\"\n" fw.data_size;
+    if opts.verbose then printf "%%print  \"bytes total: %d\\n\"\n" fw.data_size;
     printf "0 echo\n";
     printf "1 led\n";
     printf "aquire\n";
