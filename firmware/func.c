@@ -156,7 +156,7 @@ void target_write_flash(fet_world_t *world, dword addr, word len)
 {
 /*    WriteFLASH_430Xv2_wo_release(addr, len, world->data);*/
 /*    putchar('@');*/
-/*    log("@");*/
+    log("target_ready");
 }
 
 void target_jtag_id_support(fet_world_t *world, word id)
@@ -219,16 +219,9 @@ void readbytes(fet_world_t *world, word offset, word len) {
     char *datap  = data  + offset; 
     char *datae  = datap + len;
 
-    uint32_t t1 = __ticks_ms;
-
     datae = datae < dataee ? datae : dataee;
 
-   
     while( datap < datae ) *datap++ = getchar();
-    
-    printf("block read: %d ms\r\n", (uint16_t)(__ticks_ms - t1) );
-   
-    putchar('@');
 }
 
 
