@@ -120,11 +120,13 @@ void target_release(fet_world_t *world)
 }
 
 void target_power(fet_world_t *world, word status) {
+#ifndef GOODFET
     if(status) {
         VJTAG_SET();
     } else {
         VJTAG_CLR();
     }
+#endif
 }
 
 

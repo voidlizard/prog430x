@@ -3,7 +3,7 @@ import os
 with_dir  = lambda d,l: map(lambda x: os.path.join(d,x),l)  
 
 CC = 'msp430-gcc'
-MCU = '-mmcu=msp430x1611'
+MCU = '-mmcu=msp430x1612'
 
 WARNINGS=" ".join([
      '-Wall' 
@@ -22,6 +22,7 @@ WARNINGS=" ".join([
 CCFLAGS_DEBUG = " ".join([ '-Os'
                            ,"-g"
                            ,MCU
+						   ,'-DGOODFET'
                            ,'-DGCC_MSP430',
                            '-DFET_HW_TEST'
                            ,WARNINGS
