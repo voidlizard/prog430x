@@ -154,8 +154,7 @@ void target_erase_flash_mass(fet_world_t *world, dword addr)
 
 void target_write_flash(fet_world_t *world, dword addr, word len)
 {
-/*    WriteFLASH_430Xv2_wo_release(addr, len, world->data);*/
-/*    putchar('@');*/
+    WriteFLASH_430Xv2_wo_release(addr, len, world->data);
     log("target_ready");
 }
 
