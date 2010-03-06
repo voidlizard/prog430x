@@ -5,6 +5,9 @@
 #include "func.h"
 #include "jtag.h"
 #include "fet_hw.h"
+#include "crc.h"
+
+extern volatile uint32_t __ticks_ms;
 
 static const char *errors[] = {
      "OK"
@@ -154,8 +157,8 @@ void target_erase_flash_mass(fet_world_t *world, dword addr)
 
 void target_write_flash(fet_world_t *world, dword addr, word len)
 {
-/*    WriteFLASH_430Xv2_wo_release(addr, len, world->data);*/
-/*    putchar('@');*/
+    uint16_t t1 = __ticks_ms;
+    WriteFLASH_430Xv2_wo_release(addr, len, world->data);
     log("target_ready");
 }
 
@@ -210,7 +213,6 @@ void data_buf_dump_txt(fet_world_t *world, dword addr, word len)
     printf("\r\n");
 }
 
-extern volatile uint32_t __ticks_ms;
 
 void readbytes(fet_world_t *world, word offset, word len) {
 
@@ -224,4 +226,7 @@ void readbytes(fet_world_t *world, word offset, word len) {
     while( datap < datae ) *datap++ = getchar();
 }
 
+word calc_crc(fet_world_t *world, word offset, word len) {
+    return crc16_bitwise(CRC16_INIT_REM, CRC16_POLY, (char*)(world->data)+offset, len);
+}
 

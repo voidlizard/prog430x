@@ -2,6 +2,7 @@ open Ti_txt
 open Printf
 open ExtList
 open ExtString
+open Crc16
 
 let max_block = 256
 
@@ -15,7 +16,8 @@ type erase_method = ERASE_MASS | ERASE_SGMT
 
 type opts = {
     mutable erase   : erase_method ;
-    mutable verbose : bool
+    mutable verbose : bool;
+    mutable crc16   : bool
 }
 
 type fw_params = {
@@ -54,9 +56,28 @@ let rec strings_of_data strings (data:int list) =
     | x                 -> strings_of_data (strings @ [fmt (List.take 8 data)]) (List.drop 8 data)
 
 let dump_block_f opts block = 
-    printf "%d %d readbytes\n" 0 ((List.length block.b_data)*2) ;
+
+    let size = (List.length block.b_data)*2 in
+    let crc16 = (Crc16.crc16_calc block.b_data) in
+
+    printf "%d %d readbytes\n" 0 size ;
 
     List.iter (fun s -> printf "%%sendstr \"%s\"\n" s ) (strings_of_data [] block.b_data) ;
+    
+    printf "%%CRC16: %04X\n\n" crc16  ;
+    
+    if opts.crc16 then
+    begin
+        printf "%%read_timeout 0.5\n" ;
+        printf "0 %d calcrc\n" size ;
+        printf "%%read_timeout 0.00001\n" ;
+        printf "$%04x -\n" crc16 ;
+        printf "%%read_timeout 0.5\n" ;
+        printf "%%print \"CRC CHECK: \"\n";
+        printf ".x\n" ;
+        printf "%%print \"\\n\"\n";
+        printf "%%read_timeout 0.00001\n" ;
+    end ;
 
 (*    List.iteri (fun i x -> printf "$%04X !w+ %s" x (if (i+1) mod 8 == 0 then "\n" else " ") ) block.b_data ;*)
 
@@ -72,7 +93,7 @@ let dump_block_f opts block =
         end
     ;
 
-    if opts.verbose then printf "\n%%print \"bytes written: %d\\n\"\n" ((List.length block.b_data)*2);
+    if opts.verbose then printf "\n%%print \"bytes written: %d\\n\"\n" size;
     printf "$%04X $%04X\n" block.b_addr (List.length block.b_data) ;
     printf "%%read_timeout 0.5\n" ;
     printf "!xfwm\n" ; 
@@ -99,9 +120,13 @@ let dump_footer_f opts =
     printf "%%wait_input 1.0\n\n"
 
 let _ = 
-    let opts = { erase = ERASE_SGMT; verbose = true }
-    in let _ = Arg.parse [("--mass",  Arg.Unit(fun () -> opts.erase   <- ERASE_MASS ), "mass erase");
-                          ("--quiet", Arg.Unit(fun () -> opts.verbose <-false), "reduce verbosity")] (fun x -> ()) "Usage:"
+    let opts = { erase = ERASE_SGMT; verbose = true; crc16 = true }
+    in let _ = Arg.parse [
+                          ("--mass",    Arg.Unit(fun () -> opts.erase   <- ERASE_MASS ), "mass erase");
+                          ("--quiet",   Arg.Unit(fun () -> opts.verbose <- false), "reduce verbosity");
+                          ("--nocrc16", Arg.Unit(fun () -> opts.crc16   <- false), "do not calc crc16")
+                          ] 
+                          (fun x -> ()) "Usage:"
     in let lex = Lexing.from_channel (Pervasives.stdin)
     in let ti = Parser.toplevel Lexer.token lex
     in let len = List.fold_left (fun acc x -> acc + (List.length x.b_data)) 0 ti

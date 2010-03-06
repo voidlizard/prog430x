@@ -52,6 +52,7 @@ void uart_reset();
 
 void readbytes(fet_world_t *world, word offset, word len); 
 
+word calc_crc(fet_world_t *world, word offset, word len);
 
 dword data_buf(fet_world_t *world);
 

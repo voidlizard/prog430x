@@ -80,6 +80,9 @@ void serial_interp(reader_t readf, world_t *world) {
         action dot_x   { spop(astack, tmp); printf("%04X", (word)tmp); }
         action dot_c   { spop(astack, tmp); printf("%c",   (word)tmp); }
 
+		action sub     { spop(astack, tmp); spop(astack, ttmp); spush(astack, ttmp-tmp); }
+		action add     { spop(astack, tmp); spop(astack, ttmp); spush(astack, ttmp+tmp); }
+
         action led     { spop(astack, tmp); set_led(world,  tmp); }
         action echo    { spop(astack, tmp); set_echo(world, tmp); }
 
@@ -111,11 +114,15 @@ void serial_interp(reader_t readf, world_t *world) {
 
         action readbytes    { /* (off size -- ) */ spop(astack, tmp); spop(astack, ttmp); readbytes(world, ttmp, tmp); }
 
+		action calcrc       { /* off size -- */ spop(astack, tmp); spop(astack, ttmp); spush(astack, calc_crc(world, ttmp, tmp)); }
+
         ping         = 'ping'    %{log("pong");};
         sleep_ms     = 'sleep_ms' %{ spop(astack, tmp);  delay_ms(tmp); log("target_ready"); };
         drop         = 'drop'    %drop;
         swap         = 'swap'    %swap;
         dup          = 'dup'     %dup;
+		sub          = '-'       %sub; 
+		add          = '+'       %add; 
         dot_x        = '.x'      %dot_x;
         dot_c        = '.c'      %dot_c;
         echo         = 'echo'    %echo;
@@ -126,6 +133,8 @@ void serial_interp(reader_t readf, world_t *world) {
         uart_reset   = 'uart-reset' %{ uart_reset(); };
 
         readbytes    = 'readbytes' %readbytes;
+
+		calcrc       = 'calcrc' %calcrc;
 
         aquire       = 'aquire'  %aquire;
         release      = 'release' %release;
@@ -153,11 +162,11 @@ void serial_interp(reader_t readf, world_t *world) {
         vjtag        = 'vjtag' %{ spop(astack, ttmp); target_power(world, tmp); };
 
         literal = (('$' xdigit+ @{add_hex(&literal, fc);}) | digit+ @{add_dec(&literal, fc);} ) %lit;
-        word    = ping | dot_x | dot_c | drop | swap | echo | led
+        word    = ping | add | sub | dup | drop | swap | dot_x | dot_c | drop | swap | echo | led
                   | aquire | release | jtag_id | jtag_id_sup | tgt_read_w | tgt_read_m
                   | dump_buf_txt | xdump | bfill | buf |  memw_inc 
                   | tgt_xfe | tgt_xfem | tgt_xfwm | sleep_ms |  reset | uart_reset
-                  | readbytes | vjtag;
+                  | readbytes | vjtag | calcrc;
 
         main := ((literal | word ) space+ %reset_lit )* ;
         

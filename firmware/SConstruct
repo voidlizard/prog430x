@@ -39,6 +39,7 @@ FW_FILES = [
      ,'ti_jtag.c'
      ,'forth.c'
      ,'func.c'
+	 ,'crc.c'
      ,'main.c'
 ]
 
