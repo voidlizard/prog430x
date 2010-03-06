@@ -17,6 +17,8 @@ type events = EWaitAnyChar of float | EWaitAnswer of float
             | ERunFilter of string | EKillFilter of int
             | EEatInput | EWaitSome
 
+type token = Raw of string | Directive of string
+
 type opts  = {
                mutable opt_port     : string;
                mutable opt_baudrate : int;
@@ -75,8 +77,8 @@ let port opts =
                  c_echoe = false;
                  c_echok = false;
                  c_echonl = false;
-                 c_vmin = 4096;
-                 c_vtime = 5;
+                 c_vmin = 1024;
+                 c_vtime = 1;
 	    } 
   in let _ = tcsetattr fd TCSAFLUSH ta';
   in let _ = tcflush fd TCIOFLUSH
@@ -87,23 +89,52 @@ let port opts =
 let rec logger () = 
     Thread.yield(); logger()
 
+let dump_chars = List.iter (fun x -> Pervasives.output_char Pervasives.stdout x)
+
 let rec tokenize chars tok tokens = 
     let add_token x toks = match x with
-      | x::xs -> (String.implode (List.rev tok)) :: toks
+      | x::xs -> Raw((String.implode (List.rev tok))) :: toks
       | []    -> toks
+    in let get_directive chars = 
+        let tok = List.takewhile (fun c -> ((c != '\r') && (c != '\n')) ) chars
+        in (tok, List.drop (List.length tok) chars)
     in match chars with 
       | '\r' :: xs
       | '\n' :: xs
       | '\t' :: xs
       | ' '  :: xs -> tokenize xs [] (add_token tok tokens)
-      | '%'  :: xs -> let t, rest = List.partition (fun c -> c != '\r' and c != '\n') xs 
+      | '%'  :: xs -> let t, rest = get_directive xs
+                      in tokenize rest [] (Directive((String.implode ('%'::t))) :: tokens)
       | x    :: xs -> tokenize xs (x :: tok) tokens
       | []         -> List.rev (add_token tok tokens)
 
+
+let send_string o s = Pervasives.output_string o s;
+                      Pervasives.output_char o '\n';
+                      Pervasives.flush o
+
+let read_all i = 
+    let rec readc chars =
+        try readc chars @[Pervasives.input_char i]
+        with End_of_file -> chars
+    in String.implode (List.rev (readc []))
+
+let read_data i timeout = 
+    let t1 = Unix.gettimeofday ()
+    in match (Unix.select [(descr_of_in_channel i)] [] [] timeout) with
+    | (x::_,_,_) -> print_endline (read_all i) 
+    | _          -> ()
+
 let run_script opts (inp,outp) script  =
-    let play_sequence c = ()
-    in let _ = List.iter print_endline (tokenize (List.of_enum script) [] [])
-    in play_sequence (List.of_enum script) 
+    let rec play_sequence opts c = match c with
+    | Raw(s)       :: rest  -> send_string outp s; read_data inp 0.01; play_sequence opts rest
+    | Directive(s) :: rest  -> (); play_sequence opts rest
+    | []                    -> ()
+
+    in let def_opts = { proc_filt    = None; proc_filt_in = None;
+                       proc_filt_out = None; proc_echo = true }
+
+    in play_sequence def_opts (tokenize (List.of_enum script) [] [])
 
 let with_io (i,o,fd) f = 
     let close_all () = close fd
