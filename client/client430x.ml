@@ -26,6 +26,7 @@ type opts  = {
              }
 
 type processing_opts = {
+    proc_read_timeout: float;
     proc_echo : bool;
     proc_filt: int option;
     proc_filt_in: Pervasives.out_channel option;
@@ -104,7 +105,7 @@ let rec tokenize chars tok tokens =
       | '\t' :: xs
       | ' '  :: xs -> tokenize xs [] (add_token tok tokens)
       | '%'  :: xs -> let t, rest = get_directive xs
-                      in tokenize rest [] (Directive((String.implode ('%'::t))) :: tokens)
+                      in tokenize rest [] (Directive((String.implode t)) :: tokens)
       | x    :: xs -> tokenize xs (x :: tok) tokens
       | []         -> List.rev (add_token tok tokens)
 
@@ -113,26 +114,71 @@ let send_string o s = Pervasives.output_string o s;
                       Pervasives.output_char o '\n';
                       Pervasives.flush o
 
+let send_string_raw o s = Pervasives.output_string o s;
+                          Pervasives.flush o
+
 let read_all i = 
     let rec readc chars =
         try readc chars @[Pervasives.input_char i]
         with End_of_file -> chars
     in String.implode (List.rev (readc []))
 
-let read_data i timeout = 
-    let t1 = Unix.gettimeofday ()
-    in match (Unix.select [(descr_of_in_channel i)] [] [] timeout) with
-    | (x::_,_,_) -> print_endline (read_all i) 
-    | _          -> ()
+let write_string opts s =
+    if opts.proc_echo then 
+    let channel = 
+        match opts.proc_filt_in with 
+        | Some(c) -> c
+        | None    -> Pervasives.stdout
+    in Pervasives.output_string channel s; fl channel
+    else ()
+
+let cmd_lexer = make_lexer ["read_timeout";"wait_input";"wait";"timeofday";"bye";
+                            "echo"; "print";"run_filter";"kill_filter";
+                            "sendstr"]
+
 
 let run_script opts (inp,outp) script  =
     let rec play_sequence opts c = match c with
-    | Raw(s)       :: rest  -> send_string outp s; read_data inp 0.01; play_sequence opts rest
-    | Directive(s) :: rest  -> (); play_sequence opts rest
-    | []                    -> ()
+      | Raw(s)       :: rest  -> send_string outp s; read_data opts; play_sequence opts rest
+      | Directive(s) :: rest  -> let opts' = process_directive opts s in play_sequence opts' rest
+      | []                    -> ()
+    and process_directive opts s = exec_cmd opts s
+    and exec_cmd opts s = 
+        let rec cmd_parser = parser 
+        | [< 'Kwd "read_timeout"; 'Float f >]  -> { opts with proc_read_timeout = f }
+        | [< 'Kwd "wait_input";   'Float f >]  -> read_data {opts with proc_read_timeout = f}; opts
+        | [< 'Kwd "wait"; 'Float f >]          -> Thread.delay f; opts
+        | [< 'Kwd "echo"; 'Int v  >]           -> { opts with proc_echo = v > 0  }
+        | [< 'Kwd "print"; 'String v  >]       -> let () = write_string opts v in opts
+        | [< 'Kwd "run_filter"; 'String v  >]  -> spawn_filter opts v
+        | [< 'Kwd "kill_filter"; 'Int sg  >]   -> kill_filter opts sg 
+        | [< 'Kwd "sendstr"; 'String s  >]     -> send_string_raw outp s; opts
+        | [< 'Kwd "bye" >]                     -> kill_filter opts 15; raise Bye
+        | [<>]                                 -> opts
+        in s |> Stream.of_string |> cmd_lexer |> cmd_parser
 
-    in let def_opts = { proc_filt    = None; proc_filt_in = None;
-                       proc_filt_out = None; proc_echo = true }
+    and spawn_filter opts p =
+        let _ = kill_filter opts 15
+        in let fin, fout = Unix.pipe ()
+        in let c_in, c_out = (in_channel_of_descr fin, out_channel_of_descr fout)
+        in let pid = Unix.create_process p [||] fin (descr_of_out_channel Pervasives.stdout)
+                                                    (descr_of_out_channel Pervasives.stderr)
+        in { opts with proc_filt = Some(pid); proc_filt_in = Some(c_out); proc_filt_out = Some(c_in) }
+
+    and kill_filter opts s =
+        let _ = match opts.proc_filt with 
+                | Some(pid) -> Unix.kill pid s
+                | None    -> ()
+        in { opts with proc_filt = None; proc_filt_in = None; proc_filt_out = None }
+
+    and read_data opts = 
+    match (Unix.select [(descr_of_in_channel inp)] [] [] opts.proc_read_timeout) with
+      | (x::_,_,_) -> write_string opts (read_all inp) ; Pervasives.flush_all ()
+      | _          -> ()
+
+    in let def_opts = { proc_read_timeout = 0.008;
+                        proc_filt    = None; proc_filt_in = None;
+                        proc_filt_out = None; proc_echo = true }
 
     in play_sequence def_opts (tokenize (List.of_enum script) [] [])
 
