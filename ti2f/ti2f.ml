@@ -54,8 +54,6 @@ let rec strings_of_data strings (data:int list) =
     | x                 -> strings_of_data (strings @ [fmt (List.take 8 data)]) (List.drop 8 data)
 
 let dump_block_f opts block = 
-(*    printf "reset\n" ;*)
-(*    printf "buf\n" ;*)
     printf "%d %d readbytes\n" 0 ((List.length block.b_data)*2) ;
 
     List.iter (fun s -> printf "%%sendstr \"%s\"\n" s ) (strings_of_data [] block.b_data) ;
@@ -65,8 +63,8 @@ let dump_block_f opts block =
     if opts.erase == ERASE_SGMT || block.b_addr >= flash2_bound
     then
         begin
+        printf "%%read_timeout 1.0\n" ;
         printf "\n\n$%04X !xfe\n" block.b_addr ; 
-        printf "%%wait_input 0.8\n\n"
         end
     else
         begin
@@ -75,8 +73,10 @@ let dump_block_f opts block =
     ;
 
     if opts.verbose then printf "\n%%print \"bytes written: %d\\n\"\n" ((List.length block.b_data)*2);
-    printf "$%04X $%04X !xfwm\n" block.b_addr (List.length block.b_data) ;
-    printf "%%wait_input 0.5\n" ;
+    printf "$%04X $%04X\n" block.b_addr (List.length block.b_data) ;
+    printf "%%read_timeout 0.5\n" ;
+    printf "!xfwm\n" ; 
+    printf "%%read_timeout 0.00001\n" ;
 
     printf "\n"
 
@@ -84,14 +84,19 @@ let dump_header_f opts fw =
     if opts.verbose then printf "%%print  \"bytes total: %d\\n\"\n" fw.data_size;
     printf "0 echo\n";
     printf "1 led\n";
+    printf "%%read_timeout 1.0\n" ;
     printf "aquire\n";
-    printf "%%wait_input 0.2\n" ;
-    if opts.erase == ERASE_MASS then printf "\n$5C00 !xfem\n%%wait 0.8\n\n"
+    printf "%%read_timeout 0.00001\n" ;
+    if opts.erase == ERASE_MASS then 
+        ( printf "%%read_timeout 1.0\n" ;
+          printf "\n$5C00 !xfem\n" ;
+          printf "%%read_timeout 0.00001\n\n" ;
+        )
 
 let dump_footer_f opts =
     printf "\n0 led\n";
     printf "release \n" ;
-    printf "%%wait_input 2.0\n\n"
+    printf "%%wait_input 1.0\n\n"
 
 let _ = 
     let opts = { erase = ERASE_SGMT; verbose = true }
