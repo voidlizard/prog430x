@@ -19,7 +19,7 @@ WARNINGS=" ".join([
     ,'-Wunused'
 ])
 
-CCFLAGS_DEBUG = " ".join([ '-Os'
+CCFLAGS_DEBUG = " ".join([ '-O2'
                            ,"-g"
                            ,MCU
 						   ,'-DGOODFET'

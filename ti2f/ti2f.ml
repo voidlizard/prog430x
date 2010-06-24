@@ -66,18 +66,6 @@ let dump_block_f opts block =
     
     printf "%%CRC16: %04X\n\n" crc16  ;
     
-    if opts.crc16 then
-    begin
-        printf "%%read_timeout 0.5\n" ;
-        printf "0 %d calcrc\n" size ;
-        printf "%%read_timeout 0.00001\n" ;
-        printf "$%04x -\n" crc16 ;
-        printf "%%read_timeout 0.5\n" ;
-        printf "%%print \"CRC CHECK: \"\n";
-        printf ".x\n" ;
-        printf "%%print \"\\n\"\n";
-        printf "%%read_timeout 0.00001\n" ;
-    end ;
 
 (*    List.iteri (fun i x -> printf "$%04X !w+ %s" x (if (i+1) mod 8 == 0 then "\n" else " ") ) block.b_data ;*)
 
@@ -89,7 +77,7 @@ let dump_block_f opts block =
         end
     else
         begin
-        printf "\n\n" ;
+        printf "\n" ;
         end
     ;
 
@@ -98,6 +86,17 @@ let dump_block_f opts block =
     printf "%%read_timeout 0.5\n" ;
     printf "!xfwm\n" ; 
     printf "%%read_timeout 0.00001\n" ;
+
+    if opts.crc16 then
+    begin
+        printf "%%read_timeout 0.01\n" ;
+        printf "$%04X $%03X @xm\n" block.b_addr size ;
+        printf "0 %d calcrc $%04x -\n" size crc16;
+        printf "%%print \"CRC CHECK: \"\n";
+        printf ".x\n" ;
+        printf "%%print \"\\n\"\n";
+        printf "%%read_timeout 0.00001\n" ;
+    end ;
 
     printf "\n"
 

@@ -229,6 +229,7 @@ void readbytes(fet_world_t *world, word offset, word len) {
 }
 
 word calc_crc(fet_world_t *world, word offset, word len) {
-    return crc16_bitwise(CRC16_INIT_REM, CRC16_POLY, (char*)(world->data)+offset, len);
+    //return crc16_bitwise(CRC16_INIT_REM, CRC16_POLY, (char*)(world->data)+offset, len);
+    return crc16_table(CRC16_INIT_REM, (char*)(world->data)+offset, len);
 }
 
