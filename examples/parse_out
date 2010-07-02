@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+
+import os,sys,re,select,time
+
+re_total   = re.compile("^bytes total:\s+(\d+)")
+re_written = re.compile("^bytes written:\s+(\d+)")
+recrc = re.compile("CRC\s+CHECK:\s+(\d+)")
+
+errors        = 0
+crc_errors    = 0
+bytes_total   = 0
+bytes_written = 0
+aquired       = 0
+speed         = 0.0
+time_start    = time.time()
+time_last     = time.time()
+time_elapsed  = 0.0
+
+def write(s):
+    sys.stdout.write(s)
+    sys.stdout.flush()
+
+def write_stats():
+    write("\rWriting flash: [%3d%%] [%6d/%-6d] [%3.2f kb/s] [%4.2fs elapsed] [%4d errors] [%4d crc errors] " % (prog,bytes_total,bytes_written,speed,time_elapsed,errors, crc_errors))
+
+def read_word(x, arr):
+    return (arr[x+1] << 8) | arr[x]
+
+def read_bytes(x, num, arr):
+    return arr[x:x+num]
+
+def parse_crc_check(s):
+    pass
+    global errors
+    global crc_errors
+    global recrc
+    m = recrc.match(s)
+    if m and (m.group(1)) != "0000":
+        crc_errors = crc_errors + 1
+        errors = errors + 1
+
+while True:
+
+    s = sys.stdin.readline().strip()
+
+    prog = 0
+    if bytes_total > 0:
+        prog = int(float(bytes_written)/float(bytes_total)*100)
+
+    if s == "target_aquire ok":
+        if aquired == 0:
+            write("\rTarget aquired")
+        aquired = aquired + 1
+    elif s == "target_ready":
+        write_stats()
+    elif s == "target_release ok":
+        write_stats()
+    elif s == "QUIT":
+        write("\r\n")
+        sys.exit(0)
+    elif s.startswith("CRC"):
+        parse_crc_check(s)
+        write_stats()
+    elif s.startswith("*** Error"):
+        errors = errors + 1
+    else:
+        m = re_written.search(s)
+        if m:
+            bytes  = (int(m.group(1)))
+            t = time.time()
+            dt = t - time_last;
+            time_elapsed = t - time_start;
+            speed  = (float(bytes)/1024.0) / dt if dt != 0 else 0
+            bytes_written = bytes_written + bytes
+            time_last = t
+            continue
+
+        m = re_total.search(s)
+        if m:
+            bytes_total = int(m.group(1))
+            continue
+
