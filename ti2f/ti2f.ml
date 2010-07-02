@@ -90,7 +90,6 @@ let dump_block_f opts block =
     if opts.crc16 then
     begin
         printf "%%read_timeout 0.01\n" ;
-        printf "$00 bfill\n" ;
         printf "$%04X $%03X @xm\n" block.b_addr size ;
         printf "0 %d calcrc $%04x -\n" size crc16;
         printf "%%print \"CRC CHECK: \"\n";
