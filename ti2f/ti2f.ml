@@ -8,6 +8,9 @@ let max_block = 256
 
 let flash2_bound = 0x10000
 
+let info_start = 0x1800
+let info_end   = 0x19FF
+
 let (|>) f x = x f
 
 exception Align_error of int
@@ -69,7 +72,7 @@ let dump_block_f opts block =
 
 (*    List.iteri (fun i x -> printf "$%04X !w+ %s" x (if (i+1) mod 8 == 0 then "\n" else " ") ) block.b_data ;*)
 
-    if opts.erase == ERASE_SGMT || block.b_addr >= flash2_bound
+    if opts.erase == ERASE_SGMT || block.b_addr >= flash2_bound || block.b_addr >= info_start && block.b_addr <= info_end
     then
         begin
         printf "%%read_timeout 1.0\n" ;
